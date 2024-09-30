@@ -26,6 +26,13 @@ class PatchedImage():
     
     def set_working_patch(self,coord):
         self.working_patch = coord
+
+    def outlines_patch(self,coord):
+        k,l = coord
+        img = self.img[k-self.size:k+self.size+1,l-self.size:l+self.size+1]
+        outlines = np.array([img[0,:],img[-1,:],img[:,0],img[:,-1]])
+        return np.concatenate(outlines)
+
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -75,3 +82,15 @@ class PatchedImage():
         plt.imshow(img, cmap='gray')
         plt.title(f"Priority : {self.priority[k,l]:.3f}")
         plt.show()
+
+    def show_img(self):
+        plt.imshow(self.img, cmap='gray')
+        plt.show()
+
+    def show_patch_in_img(self, coord = None):
+        if coord == None:
+            coord = self.working_patch
+        k,l = coord
+        contours = self.outlines_patch(coord)
+        plt.imshow(self.img, cmap='gray')
+        plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],'r')
