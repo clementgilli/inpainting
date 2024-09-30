@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 def gradient(ar):
     grad_i, grad_j = np.gradient(ar)

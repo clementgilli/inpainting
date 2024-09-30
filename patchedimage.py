@@ -8,6 +8,7 @@ class PatchedImage():
         self.size = size
         self.zone = self.set_zone() # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
+        self.masque = None # de cette forme [(0,0),(0,0)]
 
         self.confidence = np.ones(self.img.shape)
         self.data = np.zeros(self.img.shape)
@@ -28,16 +29,21 @@ class PatchedImage():
         outlines = np.array([img[0,:],img[-1,:],img[:,0],img[:,-1]])
         return np.concatenate(outlines)
 
+    def set_masque(self,c1,c2):
+        self.masque = [c1,c2]
+        for i in range(c1[0],c2[0]+1):
+            for j in range(c1[1],c2[1]+1):
+                self.zone[i,j] = 0
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
-            for i in range(self.size,self.length-self.size+1):
-                for j in range(self.size,self.width-self.size+1):
-                    if self.zone[i,j] != 0:
+            for i in range(self.size,self.length-self.size): #+1 ?
+                for j in range(self.size,self.width-self.size): #+1 ?
+                    #if self.zone[i,j] != 0:
                         #self.set_priority_patch((i,j))
-                        conf = self.set_confidence_patch((i,j))
-                        dat = self.set_data_patch((i,j))
-                        self.priority[i,j] = conf*dat
+                    conf = self.set_confidence_patch((i,j))
+                    dat = self.set_data_patch((i,j))
+                    self.priority[i,j] = conf*dat
         else:
             k,l = self.working_patch
             conf = self.set_confidence_patch((k,l))
@@ -79,7 +85,14 @@ class PatchedImage():
         plt.show()
 
     def show_img(self):
-        plt.imshow(self.img, cmap='gray')
+        fig, ax = plt.subplots()
+        ax.imshow(self.img, cmap='gray')
+        if self.masque != None:
+            x1,y1 = self.masque[0]
+            x2,y2 = self.masque[1]
+            square = patches.Rectangle((y1,x1),y2-y1,x2-x1,linewidth=1,edgecolor='r',facecolor='r')
+            ax.add_patch(square)
+            #ax.plot([self.masque[0][1],self.masque[1][1],self.masque[1][1],self.masque[0][1],self.masque[0][1]],[self.masque[0][0],self.masque[0][0],self.masque[1][0],self.masque[1][0],self.masque[0][0]],color=(0,1,0))
         plt.show()
 
     def show_patch_in_img(self, coord = None):
@@ -88,4 +101,4 @@ class PatchedImage():
         k,l = coord
         contours = self.outlines_patch(coord)
         plt.imshow(self.img, cmap='gray')
-        plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],'r')
+        plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
