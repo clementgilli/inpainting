@@ -1,9 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
-def gradient(ar):
-    grad_i, grad_j = np.gradient(ar)
-    return np.array([[(grad_i[i, j], grad_j[i, j]) for j in range(grad_i.shape[1])] for i in range(grad_j.shape[0])])
+from utilities import *
 
 class PatchedImage():
     def __init__(self, filename, size):
@@ -52,8 +47,8 @@ class PatchedImage():
     def set_confidence_patch(self,coord):
         k,l = coord
         somme = 0
-        for i in range(k-self.size,k+self.size):
-            for j in range(l-self.size,l+self.size):
+        for i in range(k-self.size,k+self.size+1):
+            for j in range(l-self.size,l+self.size+1):
                 if self.zone[i,j] == 2:
                     somme += self.confidence[i,j]
         res = somme/(self.size*2+1)**2
