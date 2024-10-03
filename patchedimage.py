@@ -34,6 +34,14 @@ class PatchedImage():
         self.zone = self.zone*(1-masque)
         outlines = self.outlines_target(2)
         self.zone[outlines[:,0],outlines[:,1]] = 1
+
+    def get_patch(self,coord):
+        i,j = coord
+        return self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]
+    
+    def set_patch(self,coord,patch):
+        i,j = coord
+        self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -55,7 +63,7 @@ class PatchedImage():
         masked_priority = self.priority[mask]
         max_index = np.argmax(masked_priority)
         original_indices = np.argwhere(mask)[max_index]
-        return original_indices
+        return tuple(original_indices)
 
     def set_confidence_patch(self,coord):
         k,l = coord
@@ -84,10 +92,9 @@ class PatchedImage():
     def show_patch(self,coord = None):
         if coord == None:
             coord = self.working_patch
-
         k,l = coord
-        img = self.img[k-self.size:k+self.size+1,l-self.size:l+self.size+1]
-        plt.imshow(img, cmap='gray',vmin=0,vmax=255)
+        pat = self.get_patch(coord)
+        plt.imshow(pat, cmap='gray',vmin=0,vmax=255)
         plt.title(f"Priority : {self.priority[k,l]:.3f}")
         plt.show()
 
