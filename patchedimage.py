@@ -8,7 +8,7 @@ class PatchedImage():
         self.size = size
         self.zone = self.set_zone() # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
-        self.masque = None # de cette forme [(0,0),(0,0)]
+        self.masque = None # de taille image avec 1 pour le masque, 0 pour le reste
 
         self.confidence = np.ones(self.img.shape)
         self.data = np.zeros(self.img.shape)
@@ -23,21 +23,17 @@ class PatchedImage():
     def set_working_patch(self,coord):
         self.working_patch = coord
 
-    def outlines_patch(self,coord):
-        k,l = coord
-        img = self.img[k-self.size:k+self.size+1,l-self.size:l+self.size+1]
-        outlines = np.array([img[0,:],img[-1,:],img[:,0],img[:,-1]])
-        return np.concatenate(outlines)
+    def outlines_target(self,size):
+        noyau = np.ones((size,size))/size**2
+        masque_conv = convolve2d(self.masque, noyau, mode='same')
+        return np.argwhere((masque_conv< 0.75) & (masque_conv>0.1))
 
-    def set_masque(self,c1,c2): #masque carré pour le moment (on donne coin haut gauche et coin bas droit)
-        self.masque = [c1,c2]
-        for i in range(c1[0],c2[0]+1):
-            for j in range(c1[1],c2[1]+1):
-                if i == c1[0] or i == c2[0] or j == c1[1] or j == c2[1]:
-                    self.zone[i,j] = 1
-                else:
-                    self.zone[i,j] = 0
-                self.img[i,j] = 0
+    def set_masque(self,masque): #1 pour le masque, 0 pour le reste
+        self.img = self.img*(1-masque)
+        self.masque = masque
+        self.zone = self.zone*(1-masque)
+        outlines = self.outlines_target(2)
+        self.zone[outlines[:,0],outlines[:,1]] = 1
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -55,7 +51,7 @@ class PatchedImage():
             self.priority[k,l] = conf*dat
 
     def find_max_priority(self):
-        mask = (self.zone != 2) #& condition
+        mask = (self.zone == 1) #& condition # on cherche le max dans la frontière
         masked_priority = self.priority[mask]
         max_index = np.argmax(masked_priority)
         original_indices = np.argwhere(mask)[max_index]
@@ -91,25 +87,25 @@ class PatchedImage():
 
         k,l = coord
         img = self.img[k-self.size:k+self.size+1,l-self.size:l+self.size+1]
-        plt.imshow(img, cmap='gray')
+        plt.imshow(img, cmap='gray',vmin=0,vmax=255)
         plt.title(f"Priority : {self.priority[k,l]:.3f}")
         plt.show()
 
     def show_img(self):
-        fig, ax = plt.subplots()
-        ax.imshow(self.img, cmap='gray')
-        if self.masque != None:
-            x1,y1 = self.masque[0]
-            x2,y2 = self.masque[1]
+        #fig, ax = plt.subplots()
+        plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+        #if self.masque != None:
+        #    x1,y1 = self.masque[0]
+        #    x2,y2 = self.masque[1]
             #square = patches.Rectangle((y1,x1),y2-y1,x2-x1,linewidth=1,edgecolor='r',facecolor='r')
             #ax.add_patch(square)
             #ax.plot([self.masque[0][1],self.masque[1][1],self.masque[1][1],self.masque[0][1],self.masque[0][1]],[self.masque[0][0],self.masque[0][0],self.masque[1][0],self.masque[1][0],self.masque[0][0]],color=(0,1,0))
-        plt.show()
+        #plt.show()
 
     def show_patch_in_img(self, coord = None):
         if coord == None:
             coord = self.working_patch
         k,l = coord
-        contours = self.outlines_patch(coord)
-        plt.imshow(self.img, cmap='gray')
+        #contours = self.outlines_patch(coord)
+        plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
