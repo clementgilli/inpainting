@@ -21,6 +21,11 @@ class PatchedImage():
         grad_i, grad_j = np.gradient(self.img)
         self.gradient = np.array([[(grad_i[i, j], grad_j[i, j]) for j in range(grad_i.shape[1])] for i in range(grad_j.shape[0])])
     
+
+    def patch_boundaries(self,coord):
+        k,l = coord
+        return k-self.size,k+self.size+1,l-self.size,l+self.size+1
+    
     def set_patch_flat(self):
         """
         img_padded = np.pad(self.img, ((self.size, self.size), (self.size, self.size)), mode='constant')
@@ -102,7 +107,10 @@ class PatchedImage():
 
     def set_data_patch(self,coord):
         i,j = coord
-        
+        a,b,c,d = self.patch_boundaries(coord)
+        im_patch = self.img[a-1:b+1,c-1:d+1]
+        grad_patch = np.gradient(im_patch)
+        detect_vert = convolve2d(im_patch, np.array([[-1,-1],[1,1]]))
         #gradient = np.gradient(self.img[i-1:i+2,j-1:j+2])
         #grad_patch = np.array([gradient[0][1,1],gradient[1][1,1]])
         #à faire
