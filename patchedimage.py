@@ -34,18 +34,9 @@ class PatchedImage():
         return k-self.size,k+self.size+1,l-self.size,l+self.size+1
     
     def set_patch_flat(self):
-        """
-        img_padded = np.pad(self.img, ((self.size, self.size), (self.size, self.size)), mode='constant')
-        shape = (self.length - 2 * self.size, self.width - 2 * self.size, 2 * self.size + 1, 2 * self.size + 1)
-        strides = img_padded.strides * 2
-        sub_matrices = np.lib.stride_tricks.as_strided(img_padded, shape=shape, strides=strides)
-        tab = sub_matrices.reshape(-1, (2 * self.size + 1) ** 2)
-        return tab
-        """
         tab = []
         for i in range(self.size,self.height-self.size):
             for j in range(self.size,self.width-self.size):
-                #tab.append(np.concatenate([np.array(self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]).flatten(),np.ones(((self.size*2+1)**2,))]))
                 tab.append(np.array(self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]).flatten())
         return np.array(tab)
     
@@ -199,8 +190,9 @@ class PatchedImage():
             mask = self.current_mask
         else:
             mask = np.ones_like(patch1)
-        dist = np.linalg.norm((patch1 - patch2) * mask)
-        return dist
+        return masked_dist(patch1,patch2,mask)
+        #dist = np.linalg.norm((patch1 - patch2) * mask)
+        #return dist
     
     def find_nearest_patch(self,coord): #renvoie le complementaire du masque
         patch = self.get_patch((coord[0],coord[1]))
@@ -215,6 +207,11 @@ class PatchedImage():
         pato = self.find_nearest_patch(coord)
         recons = self.get_patch(coord)+pato
         self.set_patch(coord,recons)
+        k,l = coord
+        self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
+        self.zone[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 2
+        outlines = self.outlines_target(2)
+        self.zone[outlines[:,0],outlines[:,1]] = 1
 
     def show_patch(self,coord = None):
         if coord == None:
@@ -226,15 +223,7 @@ class PatchedImage():
         plt.show()
 
     def show_img(self):
-        #fig, ax = plt.subplots()
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
-        #if self.masque != None:
-        #    x1,y1 = self.masque[0]
-        #    x2,y2 = self.masque[1]
-            #square = patches.Rectangle((y1,x1),y2-y1,x2-x1,linewidth=1,edgecolor='r',facecolor='r')
-            #ax.add_patch(square)
-            #ax.plot([self.masque[0][1],self.masque[1][1],self.masque[1][1],self.masque[0][1],self.masque[0][1]],[self.masque[0][0],self.masque[0][0],self.masque[1][0],self.masque[1][0],self.masque[0][0]],color=(0,1,0))
-        #plt.show()
 
     def show_patch_in_img(self, coord = None):
         if coord == None:

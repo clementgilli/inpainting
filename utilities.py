@@ -3,6 +3,12 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from scipy.signal import convolve2d
 from sklearn.neighbors import BallTree
+import numba
+
+@numba.jit(nopython=True)
+def masked_dist(patch1, patch2, mask):
+    dist = np.linalg.norm((patch1 - patch2) * mask)
+    return dist
 
 def get_max_dict(dict, value=False):
     if value: # return key and value
