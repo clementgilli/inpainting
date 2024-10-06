@@ -114,7 +114,7 @@ class PatchedImage():
         p_size = 2*self.size+1
         patchs = self.patch_flat
         masque = 1 -(patch == 0)
-        tree = BallTree(patchs*(masque.flatten()), leaf_size=16) #leaf_size à changer ?
+        tree = BallTree(patchs*(masque.flatten()), leaf_size=256) #leaf_size à changer ?
         dist, ind = tree.query([patch.flatten()], k=3)
         return patchs[ind[0,1]].reshape((p_size,p_size))* (1-masque)
     
