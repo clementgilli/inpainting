@@ -9,10 +9,12 @@ class PatchedImage():
         self.size = size
 
         self.patch_flat = None
+        self.tree = None #leaf_size à changer ? en fonction de la taille de l'image
+        self.current_mask = None
 
         self.zone = self.set_zone() # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
-        self.masque = None # de taille image avec 1 pour le masque, 0 pour le reste
+        self.masque = None
 
         self.confidence = np.ones(self.img.shape)
         self.data = np.zeros(self.img.shape)
@@ -33,6 +35,7 @@ class PatchedImage():
         tab = []
         for i in range(self.size,self.length-self.size):
             for j in range(self.size,self.width-self.size):
+                #tab.append(np.concatenate([np.array(self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]).flatten(),np.ones(((self.size*2+1)**2,))]))
                 tab.append(np.array(self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]).flatten())
         return np.array(tab)
     
@@ -47,13 +50,14 @@ class PatchedImage():
         masque_conv = convolve2d(self.masque, noyau, mode='same')
         return np.argwhere((masque_conv< 0.75) & (masque_conv>0.1))
 
-    def set_masque(self,masque): #1 pour le masque, 0 pour le reste
+    def set_masque(self,masque,leaf_size): #1 pour le masque, 0 pour le reste
         self.img = self.img*(1-masque)
         self.masque = masque
         self.zone = self.zone*(1-masque)
         outlines = self.outlines_target(2)
         self.zone[outlines[:,0],outlines[:,1]] = 1
         self.patch_flat = self.set_patch_flat()
+        self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
 
     def get_patch(self,coord):
         i,j = coord
@@ -109,14 +113,22 @@ class PatchedImage():
         
         return 1
     
+    def masked_distance(self, patch1, patch2):
+        if self.current_mask is not None:
+            mask = self.current_mask
+        else:
+            mask = np.ones_like(patch1)
+        dist = np.linalg.norm((patch1 - patch2) * mask)
+        return dist
+    
     def find_nearest_patch(self,coord): #renvoie le complementaire du masque
         patch = self.get_patch((coord[0],coord[1]))
         p_size = 2*self.size+1
         patchs = self.patch_flat
-        masque = 1 -(patch == 0)
-        tree = BallTree(patchs*(masque.flatten()), leaf_size=256) #leaf_size à changer ?
-        dist, ind = tree.query([patch.flatten()], k=3)
-        return patchs[ind[0,1]].reshape((p_size,p_size))* (1-masque)
+        masque = (patch != 0).flatten()
+        self.current_mask = masque
+        ind = self.tree.query([patch.flatten()], k=2,return_distance=False)
+        return (patchs[ind[0,1]][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
     
     def reconstruction(self,coord): #un patch
         pato = self.find_nearest_patch(coord)
