@@ -4,10 +4,6 @@ import matplotlib.patches as patches
 from scipy.signal import convolve2d
 from sklearn.neighbors import BallTree
 
-def gradient(ar):
-    grad_i, grad_j = np.gradient(ar)
-    return np.array([[(grad_i[i, j], grad_j[i, j]) for j in range(grad_i.shape[1])] for i in range(grad_j.shape[0])])
-
 def get_max_dict(dict, value=False):
     if value: # return key and value
         return max(dict.items(), key=lambda k: k[1])
@@ -26,3 +22,6 @@ def masque_circulaire(c,r,imgsize):
             if (i-c[0])**2+(j-c[1])**2 <= r**2:
                 masque[i,j] = 1
     return masque
+
+def orthogonal_vector(v):
+    return np.array([-v[1], v[0]])
