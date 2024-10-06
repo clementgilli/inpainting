@@ -3,6 +3,7 @@ from utilities import *
 class PatchedImage():
     def __init__(self, filename, size):
         self.img = plt.imread(filename).copy().astype(np.float64)
+        self.img2 = plt.imread(filename).copy().astype(np.float64)
 
         self.height = self.img.shape[0]
         self.width = self.img.shape[1]
@@ -25,9 +26,7 @@ class PatchedImage():
     def periodic_boundary(self, start_row, end_row, start_col, end_col):
         row_indices = np.arange(start_row, end_row) % self.height
         col_indices = np.arange(start_col, end_col) % self.width
-        return self.img[np.ix_(row_indices, col_indices)]
-
-    
+        return self.img2[np.ix_(row_indices, col_indices)]
 
     def patch_boundaries(self,coord):
         k,l = coord
@@ -52,11 +51,11 @@ class PatchedImage():
         return np.argwhere((masque_conv< 0.75) & (masque_conv>0.1))
 
     def set_masque(self,masque,leaf_size): #1 pour le masque, 0 pour le reste
+        self.img = self.img*(1-masque)
         for i in range(self.height):
             for j in range(self.width):
                 if masque[i,j] == 1:
-                    self.img[i,j] = np.nan
-                    
+                    self.img2[i,j] = np.nan
         self.masque = masque
         self.zone = self.zone*(1-masque)
         outlines = self.outlines_target(2)
@@ -71,6 +70,7 @@ class PatchedImage():
     def set_patch(self,coord,patch):
         i,j = coord
         self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
+        self.img2[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -168,7 +168,7 @@ class PatchedImage():
 
         tengeante_x,tengeante_y = a-c,b-d
 
-        if y - ((d-b)/(c-a)*(x-a)+b) > 0:
+        if y - ((d-b)/(c-a+1e-3)*(x-a)+b) > 0: #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
             return (-tengeante_y,tengeante_x)
         else:
             return (tengeante_y,-tengeante_x)
