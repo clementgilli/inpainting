@@ -3,9 +3,13 @@ from utilities import *
 class PatchedImage():
     def __init__(self, filename, size):
         self.img = plt.imread(filename).copy()
+
         self.length = self.img.shape[0]
         self.width = self.img.shape[1]
         self.size = size
+
+        self.patch_flat = None
+
         self.zone = self.set_zone() # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
         self.masque = None # de taille image avec 1 pour le masque, 0 pour le reste
@@ -16,6 +20,21 @@ class PatchedImage():
 
         grad_i, grad_j = np.gradient(self.img)
         self.gradient = np.array([[(grad_i[i, j], grad_j[i, j]) for j in range(grad_i.shape[1])] for i in range(grad_j.shape[0])])
+    
+    def set_patch_flat(self):
+        """
+        img_padded = np.pad(self.img, ((self.size, self.size), (self.size, self.size)), mode='constant')
+        shape = (self.length - 2 * self.size, self.width - 2 * self.size, 2 * self.size + 1, 2 * self.size + 1)
+        strides = img_padded.strides * 2
+        sub_matrices = np.lib.stride_tricks.as_strided(img_padded, shape=shape, strides=strides)
+        tab = sub_matrices.reshape(-1, (2 * self.size + 1) ** 2)
+        return tab
+        """
+        tab = []
+        for i in range(self.size,self.length-self.size):
+            for j in range(self.size,self.width-self.size):
+                tab.append(np.array(self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]).flatten())
+        return np.array(tab)
     
     def set_zone(self):
         return np.ones(self.img.shape)*2 #tout est source au debut
@@ -34,6 +53,7 @@ class PatchedImage():
         self.zone = self.zone*(1-masque)
         outlines = self.outlines_target(2)
         self.zone[outlines[:,0],outlines[:,1]] = 1
+        self.patch_flat = self.set_patch_flat()
 
     def get_patch(self,coord):
         i,j = coord
@@ -88,6 +108,20 @@ class PatchedImage():
         #à faire
         
         return 1
+    
+    def find_nearest_patch(self,coord): #renvoie le complementaire du masque
+        patch = self.get_patch((coord[0],coord[1]))
+        p_size = 2*self.size+1
+        patchs = self.patch_flat
+        masque = 1 -(patch == 0)
+        tree = BallTree(patchs*(masque.flatten()), leaf_size=16) #leaf_size à changer ?
+        dist, ind = tree.query([patch.flatten()], k=3)
+        return patchs[ind[0,1]].reshape((p_size,p_size))* (1-masque)
+    
+    def reconstruction(self,coord): #un patch
+        pato = self.find_nearest_patch(coord)
+        recons = self.get_patch(coord)+pato
+        self.set_patch(coord,recons)
 
     def show_patch(self,coord = None):
         if coord == None:

@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from scipy.signal import convolve2d
+from sklearn.neighbors import BallTree
 
 def gradient(ar):
     grad_i, grad_j = np.gradient(ar)
