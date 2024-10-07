@@ -107,29 +107,11 @@ class PatchedImage():
     def mean_valid_gradient(self, i, j,):
         #Compute the mean gradients of the valid (non-NaN) neighbors around a given point (i, j) in a 2D arrayfor both x and y directions.
         grad_y, grad_x = self.gradient
+        try:
+            return mean_valid_gradient_compiled(i,j,grad_y,grad_x,self.height,self.width)
+        except ZeroDivisionError:
+            return 0,0
         
-        valid_gradients_y = []
-        valid_gradients_x = []
-
-        # Check the neighbors' gradients; considering the Moore neighborhood (8 surrounding cells)
-        for di in range(-1, 2):
-            for dj in range(-1, 2):
-                ni, nj = i + di, j + dj
-                if di == 0 and dj == 0:
-                    continue  # Skip the center point itself
-                if 0 <= ni < self.height and 0 <= nj < self.width:
-                    # Append valid (non-NaN) gradients from each dimension
-                    if not np.isnan(grad_y[ni, nj]):
-                        valid_gradients_y.append(grad_y[ni, nj])
-                    if not np.isnan(grad_x[ni, nj]):
-                        valid_gradients_x.append(grad_x[ni, nj])
-
-        # Calculate the mean of valid gradients for each axis
-        mean_gradient_y = np.mean(valid_gradients_y)
-        mean_gradient_x = np.mean(valid_gradients_x)
-
-        return (mean_gradient_y, mean_gradient_x)
-
     def set_gradient_patch(self, coord):
         a,b,c,d = self.patch_boundaries(coord)
         im_patch = self.periodic_boundary(a-1,b+1,c-1,d+1)
@@ -145,39 +127,7 @@ class PatchedImage():
                     self.gradient[1][i,j] = ygrad
 
     def compute_normal(self, coord):
-        i,j = coord
-        if self.zone[i,j] != 1:
-            raise ValueError('trying to calculate normal vector not in frontier')
-        
-        border_neighbors = []
-        target_neighbors = (-1,-1)
-        for di in range(-1, 2):
-            for dj in range(-1, 2):
-                ni, nj = i + di, j + dj
-                if di == 0 and dj == 0:
-                    continue  # Skip the center point itself
-                if 0 <= ni < self.height and 0 <= nj < self.width:
-                    if self.zone[ni,nj] == 1:
-                        border_neighbors.append((ni, nj))
-                    elif self.zone[ni,nj] == 0:
-                        target_neighbors = (ni,nj)
-
-        if len(target_neighbors) == 0:
-            raise ValueError('no target neighbors found')
-        if len(border_neighbors) < 2:
-            border_neighbors.append((i,j))
-
-        border_neighbors=sorted(border_neighbors)
-        a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
-        x,y = target_neighbors
-
-        tengeante_x,tengeante_y = a-c,b-d
-        norme = (tengeante_x**2+tengeante_y**2)**0.5
-        
-        if below_line(x,y, a,b, c,d): #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
-            return (-tengeante_y/norme,tengeante_x/norme)
-        else:
-            return (tengeante_y/norme,-tengeante_x/norme)
+        return compute_normal_compiled(coord, self.zone, self.height, self.width)
 
     def set_data_patch(self,coord):
         k,l = coord
@@ -206,7 +156,7 @@ class PatchedImage():
         patchs = self.patch_flat
         masque = (patch != 0).flatten()
         self.current_mask = masque
-        ind = self.tree.query([patch.flatten()], k=2,return_distance=False)
+        ind = self.tree.query([patch.flatten()], k=2,return_distance=False, dualtree=True) #dual tree pour les images plus grandes
         return (patchs[ind[0,1]][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
     
     def reconstruction(self,coord): #un patch
@@ -214,6 +164,7 @@ class PatchedImage():
         recons = self.get_patch(coord)+pato
         self.set_patch(coord,recons)
         k,l = coord
+        #probablement à changer ce q'il y a en dessous
         self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
         self.zone[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 2
         outlines = self.outlines_target(2)

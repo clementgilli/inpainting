@@ -29,11 +29,75 @@ def masque_circulaire(c,r,imgsize):
                 masque[i,j] = 1
     return masque
 
+@numba.jit(nopython=True)
 def orthogonal_vector(v):
     return np.array([-v[1], v[0]])
 
+@numba.jit(nopython=True)
 def below_line(x,y, a,b, c,d):
     if a == c:
         return x < a
     else:
         return y - ((d-b)/(c-a)*(x-a)+b) > 0 
+
+@numba.jit(nopython=True)
+def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
+        #Compute the mean gradients of the valid (non-NaN) neighbors around a given point (i, j) in a 2D arrayfor both x and y directions.
+        
+    valid_gradients_y = []
+    valid_gradients_x = []
+
+        # Check the neighbors' gradients; considering the Moore neighborhood (8 surrounding cells)
+    for di in range(-1, 2):
+        for dj in range(-1, 2):
+            ni, nj = i + di, j + dj
+            if di == 0 and dj == 0:
+                continue  # Skip the center point itself
+            if 0 <= ni < height and 0 <= nj < width:
+                    # Append valid (non-NaN) gradients from each dimension
+                if not np.isnan(grad_y[ni, nj]):
+                    valid_gradients_y.append(grad_y[ni, nj])
+                if not np.isnan(grad_x[ni, nj]):
+                    valid_gradients_x.append(grad_x[ni, nj])
+
+        # Calculate the mean of valid gradients for each axis
+    mean_gradient_y = np.mean(np.array(valid_gradients_y))
+    mean_gradient_x = np.mean(np.array(valid_gradients_x))
+
+    return (mean_gradient_y, mean_gradient_x)
+
+@numba.jit(nopython=True)
+def compute_normal_compiled(coord, zone, height, width):
+    i,j = coord
+    if zone[i,j] != 1:
+        raise ValueError('trying to calculate normal vector not in frontier')
+        
+    border_neighbors = []
+    target_neighbors = (-1,-1)
+    for di in range(-1, 2):
+        for dj in range(-1, 2):
+            ni, nj = i + di, j + dj
+            if di == 0 and dj == 0:
+                continue  # Skip the center point itself
+            if 0 <= ni < height and 0 <= nj < width:
+                if zone[ni,nj] == 1:
+                    border_neighbors.append((ni, nj))
+                elif zone[ni,nj] == 0:
+                    target_neighbors = (ni,nj)
+
+    if len(target_neighbors) == 0:
+        raise ValueError('no target neighbors found')
+    if len(border_neighbors) < 2:
+        border_neighbors.append((i,j))
+
+    border_neighbors=sorted(border_neighbors)
+    a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
+    x,y = target_neighbors
+
+    tengeante_x,tengeante_y = a-c,b-d
+    norme = (tengeante_x**2+tengeante_y**2)**0.5
+        
+    if below_line(x,y, a,b, c,d): #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
+        return (-tengeante_y/norme,tengeante_x/norme)
+    else:
+        return (tengeante_y/norme,-tengeante_x/norme)
