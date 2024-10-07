@@ -31,3 +31,9 @@ def masque_circulaire(c,r,imgsize):
 
 def orthogonal_vector(v):
     return np.array([-v[1], v[0]])
+
+def below_line(x,y, a,b, c,d):
+    if a == c:
+        return x < a
+    else:
+        return y - ((d-b)/(c-a)*(x-a)+b) > 0 

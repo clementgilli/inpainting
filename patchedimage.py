@@ -157,21 +157,27 @@ class PatchedImage():
                 if di == 0 and dj == 0:
                     continue  # Skip the center point itself
                 if 0 <= ni < self.height and 0 <= nj < self.width:
-                    if self.zone[ni,nj] != 1:
+                    if self.zone[ni,nj] == 1:
                         border_neighbors.append((ni, nj))
                     elif self.zone[ni,nj] == 0:
                         target_neighbors = (ni,nj)
+
+        if len(target_neighbors) == 0:
+            raise ValueError('no target neighbors found')
+        if len(border_neighbors) < 2:
+            border_neighbors.append((i,j))
 
         border_neighbors=sorted(border_neighbors)
         a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
         x,y = target_neighbors
 
         tengeante_x,tengeante_y = a-c,b-d
-
-        if y - ((d-b)/(c-a+1e-3)*(x-a)+b) > 0: #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
-            return (-tengeante_y,tengeante_x)
+        norme = (tengeante_x**2+tengeante_y**2)**0.5
+        
+        if below_line(x,y, a,b, c,d): #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
+            return (-tengeante_y/norme,tengeante_x/norme)
         else:
-            return (tengeante_y,-tengeante_x)
+            return (tengeante_y/norme,-tengeante_x/norme)
 
     def set_data_patch(self,coord):
         k,l = coord
