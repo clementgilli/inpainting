@@ -85,10 +85,8 @@ def compute_normal_compiled(coord, zone, height, width):
                 elif zone[ni,nj] == 0:
                     target_neighbors = (ni,nj)
 
-    if len(target_neighbors) == 0:
-        raise ValueError('no target neighbors found')
     if len(border_neighbors) < 2:
-        border_neighbors.append((i,j))
+        raise ValueError('no target neighbors found')
 
     border_neighbors=sorted(border_neighbors)
     a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
