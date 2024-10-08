@@ -92,10 +92,10 @@ def compute_normal_compiled(coord, zone, height, width):
     a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
     x,y = target_neighbors
 
-    tengeante_x,tengeante_y = a-c+1e-3,b-d+1e-3 #epsilon pour éviter la division par 0
+    tengeante_x,tengeante_y = a-c,b-d
     norme = (tengeante_x**2+tengeante_y**2)**0.5
         
-    if below_line(x,y, a,b, c,d): #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
+    if below_line(x,y, a,b, c,d):
         return (-tengeante_y/norme,tengeante_x/norme)
     else:
         return (tengeante_y/norme,-tengeante_x/norme)
