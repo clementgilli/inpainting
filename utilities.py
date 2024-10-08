@@ -5,9 +5,11 @@ from scipy.signal import convolve2d
 from sklearn.neighbors import BallTree
 import numba
 
-@numba.jit(nopython=True,fastmath=True)
+#@numba.jit(nopython=True,fastmath=True)
 def masked_dist(patch1, patch2, mask):
-    dist = np.linalg.norm((patch1 - patch2) * mask)
+    patch1_copy = np.nan_to_num(patch1, nan=0.0)
+    patch2_copy = np.nan_to_num(patch2, nan=0.0)
+    dist = np.linalg.norm((patch1_copy - patch2_copy) * mask)
     return dist
 
 def get_max_dict(dict, value=False):
@@ -29,17 +31,18 @@ def masque_circulaire(c,r,imgsize):
                 masque[i,j] = 1
     return masque
 
-@numba.jit(nopython=True)
+#@numba.jit(nopython=True)
 def orthogonal_vector(v):
     return np.array([-v[1], v[0]])
 
-@numba.jit(nopython=True,fastmath=True)
+#@numba.jit(nopython=True,fastmath=True)
 def below_line(x,y, a,b, c,d):
     if a - c == 0: #pour eviter la division par 0 : cas d'une droite verticale
         return x < a
     else:
         return y - ((d-b)/(c-a)*(x-a)+b) > 0 
 
+#@numba.jit(nopython=False)
 def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
         #Compute the mean gradients of the valid (non-NaN) neighbors around a given point (i, j) in a 2D arrayfor both x and y directions.
         
@@ -62,6 +65,12 @@ def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
         # Calculate the mean of valid gradients for each axis
 
     if valid_gradients_y == [] or valid_gradients_x == []:
+        print(i,j)
+        plt.imshow(grad_y)
+        plt.show()
+        plt.imshow(grad_x)
+        plt.show()
+
         raise ValueError('no valid gradients found')
     
     mean_gradient_y = np.mean(np.array(valid_gradients_y))
@@ -69,7 +78,7 @@ def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
 
     return (mean_gradient_y, mean_gradient_x)
 
-@numba.jit(nopython=True)
+#@numba.jit(nopython=True)
 def compute_normal_compiled(coord, zone, height, width):
     i,j = coord
     if zone[i,j] != 1:

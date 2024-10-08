@@ -2,8 +2,7 @@ from utilities import *
 
 class PatchedImage():
     def __init__(self, filename, size):
-        self.img = plt.imread(filename).copy().astype(np.float64)
-        self.img2 = plt.imread(filename).copy().astype(np.float64)
+        self.img = plt.imread(filename).copy().astype(np.float64)[::2,::2]
 
         self.height = self.img.shape[0]
         self.width = self.img.shape[1]
@@ -13,7 +12,7 @@ class PatchedImage():
         self.tree = None #leaf_size à changer ? en fonction de la taille de l'image
         self.current_mask = None
 
-        self.zone = self.set_zone() # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
+        self.zone = np.ones(self.img.shape)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
         self.masque = None
 
@@ -21,12 +20,12 @@ class PatchedImage():
         self.data = np.zeros(self.img.shape)
         self.priority = np.zeros(self.img.shape)
 
-        self.gradient = np.zeros((2,self.height,self.width))
+        self.gradient = np.full((2, self.height, self.width), np.nan)
     
     def periodic_boundary(self, start_row, end_row, start_col, end_col):
         row_indices = np.arange(start_row, end_row) % self.height
         col_indices = np.arange(start_col, end_col) % self.width
-        return self.img2[np.ix_(row_indices, col_indices)]
+        return self.img[np.ix_(row_indices, col_indices)]
 
     def patch_boundaries(self,coord):
         k,l = coord
@@ -36,11 +35,10 @@ class PatchedImage():
         tab = []
         for i in range(self.size,self.height-self.size):
             for j in range(self.size,self.width-self.size):
-                tab.append(np.array(self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]).flatten())
+                patch = np.array(self.img[i-self.size:i+self.size+1, j-self.size:j+self.size+1])
+                patch[np.isnan(patch)] = 0
+                tab.append(patch.flatten())
         return np.array(tab)
-    
-    def set_zone(self):
-        return np.ones(self.img.shape)*2 #tout est source au debut
     
     def set_working_patch(self,coord):
         self.working_patch = coord
@@ -55,7 +53,7 @@ class PatchedImage():
         for i in range(self.height):
             for j in range(self.width):
                 if masque[i,j] == 1:
-                    self.img2[i,j] = np.nan
+                    self.img[i,j] = np.nan
         self.masque = masque
         self.zone = self.zone*(1-masque)
         outlines = self.outlines_target(2)
@@ -64,13 +62,15 @@ class PatchedImage():
         self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
 
     def get_patch(self,coord):
-        i,j = coord
-        return self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1]
+        a,b,c,d = self.patch_boundaries(coord)
+        return self.img[a:b,c:d]
     
-    def set_patch(self,coord,patch):
-        i,j = coord
-        self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
-        self.img2[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
+    def set_patch(self,coord,patch): 
+        a,b,c,d = self.patch_boundaries(coord)
+        for i in range(a, b):
+            for j in range(c, d):
+                if np.isnan(self.img[i, j]):
+                    self.img[i, j] = patch[i - a, j - c]
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -113,6 +113,9 @@ class PatchedImage():
             return 0,0
         
     def set_gradient_patch(self, coord):
+        if self.zone[coord] == 0:
+            raise ValueError("Trying to calculate the gradient in the target region")
+        
         a,b,c,d = self.patch_boundaries(coord)
         im_patch = self.periodic_boundary(a-1,b+1,c-1,d+1)
         xgrad, ygrad = np.gradient(im_patch)
