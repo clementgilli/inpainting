@@ -35,7 +35,7 @@ def orthogonal_vector(v):
 
 @numba.jit(nopython=True,fastmath=True)
 def below_line(x,y, a,b, c,d):
-    if abs(a - c)<1e-5: #jamais exactement égal?
+    if a - c == 0: #pour eviter la division par 0 : cas d'une droite verticale
         return x < a
     else:
         return y - ((d-b)/(c-a)*(x-a)+b) > 0 
