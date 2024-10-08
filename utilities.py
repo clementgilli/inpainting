@@ -40,7 +40,6 @@ def below_line(x,y, a,b, c,d):
     else:
         return y - ((d-b)/(c-a)*(x-a)+b) > 0 
 
-@numba.jit(nopython=True)
 def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
         #Compute the mean gradients of the valid (non-NaN) neighbors around a given point (i, j) in a 2D arrayfor both x and y directions.
         
@@ -61,6 +60,10 @@ def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
                     valid_gradients_x.append(grad_x[ni, nj])
 
         # Calculate the mean of valid gradients for each axis
+
+    if valid_gradients_y == [] or valid_gradients_x == []:
+        raise ValueError('no valid gradients found')
+    
     mean_gradient_y = np.mean(np.array(valid_gradients_y))
     mean_gradient_x = np.mean(np.array(valid_gradients_x))
 
