@@ -5,7 +5,7 @@ from scipy.signal import convolve2d
 from sklearn.neighbors import BallTree
 import numba
 
-@numba.jit(nopython=True)
+@numba.jit(nopython=True,fastmath=True)
 def masked_dist(patch1, patch2, mask):
     dist = np.linalg.norm((patch1 - patch2) * mask)
     return dist
@@ -33,9 +33,9 @@ def masque_circulaire(c,r,imgsize):
 def orthogonal_vector(v):
     return np.array([-v[1], v[0]])
 
-@numba.jit(nopython=True)
+@numba.jit(nopython=True,fastmath=True)
 def below_line(x,y, a,b, c,d):
-    if a == c:
+    if abs(a - c)<1e-5: #jamais exactement égal?
         return x < a
     else:
         return y - ((d-b)/(c-a)*(x-a)+b) > 0 
@@ -94,7 +94,7 @@ def compute_normal_compiled(coord, zone, height, width):
     a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
     x,y = target_neighbors
 
-    tengeante_x,tengeante_y = a-c,b-d
+    tengeante_x,tengeante_y = a-c+1e-3,b-d+1e-3 #epsilon pour éviter la division par 0
     norme = (tengeante_x**2+tengeante_y**2)**0.5
         
     if below_line(x,y, a,b, c,d): #j'ai rajouté le +1e-3 pour éviter la division par 0 (peut etre pas la meilleure solution)
