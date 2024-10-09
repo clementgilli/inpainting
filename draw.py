@@ -16,13 +16,13 @@ def draw_with_mouse(event, x, y, flags, param):
 
     elif event == cv2.EVENT_MOUSEMOVE: 
         if drawing:  
-            cv2.circle(image_with_drawing, (x, y), brush_size, -1, -1)
+            cv2.circle(image_with_drawing, (x, y), brush_size, 0, -1) #ou -1 à la place 0
             cv2.circle(overlay_image, (x, y), brush_size, (0, 0, 255), -1)
             cv2.circle(mask, (x, y), brush_size, 1, -1)
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
-        cv2.circle(image_with_drawing, (x, y), brush_size, -1, -1)
+        cv2.circle(image_with_drawing, (x, y), brush_size, 0, -1)
         cv2.circle(overlay_image, (x, y), brush_size, (0, 0, 255), -1)
         cv2.circle(mask, (x, y), brush_size, 1, -1) 
 
@@ -46,6 +46,7 @@ def draw_on_image(image_path):
     cv2.namedWindow('image')
     cv2.setMouseCallback('image', draw_with_mouse, param=(image_float, overlay_image, mask))
     cv2.createTrackbar('Taille du pinceau', 'image', brush_size, 50, update_brush_size)
+    cv2.setTrackbarMin('Taille du pinceau', 'image', 10)
 
     while True:
         alpha = 0.6
