@@ -111,7 +111,7 @@ class PatchedImage():
         somme = 0
         for i in range(k-self.size,k+self.size+1):
             for j in range(l-self.size,l+self.size+1):
-                if self.zone[i,j] == 2:
+                if self.zone[i,j] != 0:
                     somme += self.confidence[i,j]
         res = somme/(self.size*2+1)**2
         self.confidence[coord] = res

@@ -17,14 +17,20 @@ def draw_with_mouse(event, x, y, flags, param):
     elif event == cv2.EVENT_MOUSEMOVE: 
         if drawing:  
             cv2.circle(image_with_drawing, (x, y), brush_size, 0, -1) #ou -1 à la place 0
+            #cv2.rectangle(image_with_drawing, (x-brush_size, y-brush_size), (x+brush_size,y+brush_size), 0, -1) #ou -1 à la place 0
             cv2.circle(overlay_image, (x, y), brush_size, (0, 0, 255), -1)
+            #cv2.rectangle(overlay_image, (x-brush_size, y-brush_size), (x+brush_size,y+brush_size), 0, -1) #ou -1 à la place 0
             cv2.circle(mask, (x, y), brush_size, 1, -1)
+            #cv2.rectangle(mask, (x-brush_size, y-brush_size), (x+brush_size,y+brush_size), 1, -1) #ou -1 à la place 0
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
         cv2.circle(image_with_drawing, (x, y), brush_size, 0, -1)
         cv2.circle(overlay_image, (x, y), brush_size, (0, 0, 255), -1)
-        cv2.circle(mask, (x, y), brush_size, 1, -1) 
+        cv2.circle(mask, (x, y), brush_size, 1, -1)
+        #cv2.rectangle(image_with_drawing, (x-brush_size, y-brush_size), (x+brush_size,y+brush_size), 0, -1) #ou -1 à la place 0
+        #cv2.rectangle(overlay_image, (x-brush_size, y-brush_size), (x+brush_size,y+brush_size), 0, -1) #ou -1 à la place 0
+        #cv2.rectangle(mask, (x-brush_size, y-brush_size), (x+brush_size,y+brush_size), 1, -1) #ou -1 à la place 0
 
 def update_brush_size(val):
     global brush_size
