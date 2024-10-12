@@ -46,22 +46,16 @@ class PatchedImage():
     
     def set_working_patch(self,coord):
         self.working_patch = coord
-
+        
     def outlines_target(self):
-        #noyau = np.ones((size,size))/size**2
-        #masque_conv = convolve2d(self.masque, noyau, mode='same')
-        #return np.argwhere((masque_conv< 0.75) & (masque_conv>0.1))
-        binary_mask = self.masque.astype(np.uint8) * 255
-        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        if len(contours) > 0:
-            contour_points = np.vstack(contours).squeeze()
-            if contour_points.ndim == 2 and contour_points.shape[1] == 2:
-                contour_points = contour_points[:, [1, 0]]  # On échange les colonnes (x, y) vers (y, x)
-                return contour_points
-            else:
-                return np.array([[]])
-        else:
-            return np.array([[]])
+        outlines = []
+        for i in range(self.height):
+            for j in range(self.width):
+                if self.masque[i][j] == 1:
+                    for n in neighbours(i,j):
+                        if self.masque[n[0]][n[1]] == 0 and n not in outlines:
+                            outlines.append(n)
+        return np.array(outlines)
 
     def set_masque(self,leaf_size,draw=True,masque=None): #1 pour le masque, 0 pour le reste
         #self.img = self.img*(1-masque)
@@ -198,6 +192,7 @@ class PatchedImage():
         self.zone[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 2
         outlines = self.outlines_target()
         if outlines.size != 0:
+            self.zone[self.zone == 1] = 2
             self.zone[outlines[:,0],outlines[:,1]] = 1
 
     def show_patch(self,coord = None):
@@ -219,3 +214,14 @@ class PatchedImage():
         #contours = self.outlines_patch(coord)
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
+
+    def reconstruction_auto(self, iter_max = np.inf):
+        i = 0
+        while len(self.zone[self.zone==0]) != 0 and i < iter_max:
+            self.set_priorities()
+            coord = self.find_max_priority()
+            self.reconstruction(coord)
+            i += 1
+            print(f"iteration {i} done")
+            #self.show_img()
+        return self.img
