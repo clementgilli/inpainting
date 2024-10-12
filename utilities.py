@@ -29,18 +29,17 @@ def masque_circulaire(c,r,imgsize):
                 masque[i,j] = 1
     return masque
 
-#@numba.jit(nopython=True)
+@numba.jit(nopython=True)
 def orthogonal_vector(v):
     return np.array([-v[1], v[0]])
 
-#@numba.jit(nopython=True,fastmath=True)
+@numba.jit(nopython=True,fastmath=True)
 def below_line(x,y, a,b, c,d):
     if a - c == 0: #pour eviter la division par 0 : cas d'une droite verticale
         return x < a
     else:
         return y - ((d-b)/(c-a)*(x-a)+b) > 0 
 
-#@numba.jit(nopython=False)
 def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
         #Compute the mean gradients of the valid (non-NaN) neighbors around a given point (i, j) in a 2D arrayfor both x and y directions.
         
@@ -79,7 +78,7 @@ def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
 
     return (mean_gradient_y, mean_gradient_x)
 
-#@numba.jit(nopython=True)
+@numba.jit(nopython=True)
 def compute_normal_compiled(coord, zone, height, width):
     i,j = coord
     if zone[i,j] != 1:

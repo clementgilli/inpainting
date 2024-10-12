@@ -1,5 +1,7 @@
 from utilities import *
 from draw import *
+import imageio
+import os
 
 class PatchedImage():
     def __init__(self, filename, size):
@@ -218,6 +220,9 @@ class PatchedImage():
 
     def reconstruction_auto(self, iter_max = np.inf, display_iter = False, display_img = False):
         i = 0
+        fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
+        #ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+        #fig.savefig(f"gifs/{i}.jpg")
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
             self.set_priorities()
             coord = self.find_max_priority()
@@ -226,7 +231,17 @@ class PatchedImage():
             if display_iter:
                 print(f"iteration {i} done")
             
-            if display_img and i%10 == 0:
-                self.show_img()
+            if display_img: # and i%10 == 0:
+                #self.show_img()
+                ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+                fig.savefig(f"gifs/{i}.jpg")
             #self.show_img()
+        if display_img:
+            images = []
+            filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
+            for filename in filenames:
+                images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
+                os.remove("./gifs/"+str(filename)+".jpg")
+            imageio.mimsave('./gifs/test.gif', images)
+
         return self.img
