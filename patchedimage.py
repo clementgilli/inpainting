@@ -206,6 +206,7 @@ class PatchedImage():
 
     def show_img(self):
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+        plt.show()
 
     def show_patch_in_img(self, coord = None):
         if coord == None:
@@ -215,13 +216,17 @@ class PatchedImage():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf):
+    def reconstruction_auto(self, iter_max = np.inf, display_iter = False, display_img = False):
         i = 0
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
             self.set_priorities()
             coord = self.find_max_priority()
             self.reconstruction(coord)
             i += 1
-            print(f"iteration {i} done")
+            if display_iter:
+                print(f"iteration {i} done")
+            
+            if display_img and i%10 == 0:
+                self.show_img()
             #self.show_img()
         return self.img
