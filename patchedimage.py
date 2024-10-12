@@ -47,10 +47,21 @@ class PatchedImage():
     def set_working_patch(self,coord):
         self.working_patch = coord
 
-    def outlines_target(self,size):
-        noyau = np.ones((size,size))/size**2
-        masque_conv = convolve2d(self.masque, noyau, mode='same')
-        return np.argwhere((masque_conv< 0.75) & (masque_conv>0.1))
+    def outlines_target(self):
+        #noyau = np.ones((size,size))/size**2
+        #masque_conv = convolve2d(self.masque, noyau, mode='same')
+        #return np.argwhere((masque_conv< 0.75) & (masque_conv>0.1))
+        binary_mask = self.masque.astype(np.uint8) * 255
+        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        if len(contours) > 0:
+            contour_points = np.vstack(contours).squeeze()
+            if contour_points.ndim == 2 and contour_points.shape[1] == 2:
+                contour_points = contour_points[:, [1, 0]]  # On échange les colonnes (x, y) vers (y, x)
+                return contour_points
+            else:
+                return np.array([[]])
+        else:
+            return np.array([[]])
 
     def set_masque(self,leaf_size,draw=True,masque=None): #1 pour le masque, 0 pour le reste
         #self.img = self.img*(1-masque)
@@ -66,7 +77,7 @@ class PatchedImage():
                     self.img2[i,j] = np.nan
         #self.masque = masque
         self.zone = self.zone*(1-self.masque)
-        outlines = self.outlines_target(2)
+        outlines = self.outlines_target()
         self.zone[outlines[:,0],outlines[:,1]] = 1
         self.patch_flat = self.set_patch_flat()
         self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
@@ -185,8 +196,9 @@ class PatchedImage():
         #probablement à changer ce q'il y a en dessous
         self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
         self.zone[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 2
-        outlines = self.outlines_target(2)
-        self.zone[outlines[:,0],outlines[:,1]] = 1
+        outlines = self.outlines_target()
+        if outlines.size != 0:
+            self.zone[outlines[:,0],outlines[:,1]] = 1
 
     def show_patch(self,coord = None):
         if coord == None:
