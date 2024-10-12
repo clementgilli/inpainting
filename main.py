@@ -12,4 +12,3 @@ print("====Reconstruction====")
 imgp.reconstruction_auto(display_img=True)
 
 imgp.show_img()
-plt.show()

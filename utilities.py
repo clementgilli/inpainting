@@ -4,17 +4,6 @@ import matplotlib.patches as patches
 from scipy.signal import convolve2d
 from sklearn.neighbors import BallTree
 import numba
-
-@numba.jit(nopython=True,fastmath=True)
-def masked_dist(patch1, patch2, mask):
-    dist = np.linalg.norm((patch1 - patch2) * mask)
-    return dist
-
-def get_max_dict(dict, value=False):
-    if value: # return key and value
-        return max(dict.items(), key=lambda k: k[1])
-    else: # return only key
-        return max(dict,key=dict.get)
     
 def masque_carre(c1,c2,imgsize):
     masque = np.zeros((imgsize[0],imgsize[1]))
@@ -28,6 +17,26 @@ def masque_circulaire(c,r,imgsize):
             if (i-c[0])**2+(j-c[1])**2 <= r**2:
                 masque[i,j] = 1
     return masque
+
+@numba.jit(nopython=True,fastmath=True)
+def masked_dist(patch1, patch2, mask):
+    dist = np.linalg.norm((patch1 - patch2) * mask)
+    return dist
+
+@numba.jit(nopython=True)
+def neighbours(i,j):
+    return [[i+1,j],[i-1,j],[i,j+1],[i,j-1]]
+
+@numba.jit(nopython=True)
+def outlines_target_compiled(height,width,masque):
+        outlines = []
+        for i in range(height):
+            for j in range(width):
+                if masque[i][j] == 1:
+                    for n in neighbours(i,j):
+                        if masque[n[0]][n[1]] == 0 and n not in outlines:
+                            outlines.append(n)
+        return outlines
 
 @numba.jit(nopython=True)
 def orthogonal_vector(v):
@@ -112,6 +121,3 @@ def compute_normal_compiled(coord, zone, height, width):
         return (-tengeante_y/norme,tengeante_x/norme)
     else:
         return (tengeante_y/norme,-tengeante_x/norme)
-    
-def neighbours(i,j):
-    return [[i+1,j],[i-1,j],[i,j+1],[i,j-1]]

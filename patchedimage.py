@@ -2,6 +2,7 @@ from utilities import *
 from draw import *
 import imageio
 import os
+from skimage.color import rgb2gray
 
 class PatchedImage():
     def __init__(self, filename, size):
@@ -9,6 +10,10 @@ class PatchedImage():
 
         self.img = plt.imread(filename).copy().astype(np.float64)
         self.img2 = plt.imread(filename).copy().astype(np.float64)
+        
+        if len(self.img.shape) == 3:
+            self.img = rgb2gray(self.img)
+            self.img2 = rgb2gray(self.img2)
 
         self.height = self.img.shape[0]
         self.width = self.img.shape[1]
@@ -50,14 +55,7 @@ class PatchedImage():
         self.working_patch = coord
         
     def outlines_target(self):
-        outlines = []
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.masque[i][j] == 1:
-                    for n in neighbours(i,j):
-                        if self.masque[n[0]][n[1]] == 0 and n not in outlines:
-                            outlines.append(n)
-        return np.array(outlines)
+        return np.array(outlines_target_compiled(self.height,self.width,self.masque))
 
     def set_masque(self,leaf_size,draw=True,masque=None): #1 pour le masque, 0 pour le reste
         #self.img = self.img*(1-masque)
@@ -234,7 +232,8 @@ class PatchedImage():
             if display_img: # and i%10 == 0:
                 #self.show_img()
                 ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
-                fig.savefig(f"gifs/{i}.jpg")
+                ax.axis('off')
+                fig.savefig(f"gifs/{i}.jpg",bbox_inches='tight')
             #self.show_img()
         if display_img:
             images = []
