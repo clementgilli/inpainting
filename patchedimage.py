@@ -231,9 +231,10 @@ class PatchedImage():
             
             if display_img: # and i%10 == 0:
                 #self.show_img()
-                ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
-                ax.axis('off')
-                fig.savefig(f"gifs/{i}.jpg",bbox_inches='tight')
+                cv2.imshow('frame',self.img/255)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+                cv2.imwrite(f"gifs/{i}.jpg", self.img)
             #self.show_img()
         if display_img:
             images = []
