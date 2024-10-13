@@ -52,7 +52,7 @@ def draw_on_image(image_path):
     cv2.namedWindow('image')
     cv2.setMouseCallback('image', draw_with_mouse, param=(image_float, overlay_image, mask))
     cv2.createTrackbar('Taille du pinceau', 'image', brush_size, 50, update_brush_size)
-    cv2.setTrackbarMin('Taille du pinceau', 'image', 10)
+    #cv2.setTrackbarMin('Taille du pinceau', 'image', 10)
 
     while True:
         alpha = 0.6
