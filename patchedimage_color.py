@@ -3,48 +3,39 @@ from draw import *
 import imageio
 import os
 from skimage.color import rgb2gray
-from skimage.color import rgb2hsv
 
-class PatchedImage():
+class PatchedImageColor():
     def __init__(self, filename, size):
         self.filename = filename
 
         self.img = plt.imread(filename).copy().astype(np.float64)
-        self.img2 = plt.imread(filename).copy().astype(np.float64)
-        
-        if len(self.img.shape) == 3:
-            self.img3 = self.img.copy()
-            self.img = rgb2hsv(self.img)[:,:,2]
-            self.img2 = rgb2hsv(self.img2)[:,:,2]
-            
-            self.rgb = True
-        
-        else:
-            self.rgb = False
+        self.img_gray = rgb2gray(self.img)
+
+        if len(self.img.shape) != 3:
+            raise ValueError("Not a colored image")
 
         self.height = self.img.shape[0]
         self.width = self.img.shape[1]
         self.size = size
 
         self.patch_flat = None
-        self.patch_flat_rgb = None
         self.tree = None #leaf_size à changer ? en fonction de la taille de l'image
         self.current_mask = None
-
-        self.zone = np.ones(self.img.shape)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
+        shape2d = (self.height, self.width)
+        self.zone = np.ones(shape2d)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
         self.masque = None
 
-        self.confidence = np.ones(self.img.shape)
-        self.data = np.zeros(self.img.shape)
-        self.priority = np.zeros(self.img.shape)
+        self.confidence = np.ones(shape2d)
+        self.data = np.zeros(shape2d)
+        self.priority = np.zeros(shape2d)
 
         self.gradient = np.full((2, self.height, self.width), np.nan)
     
     def periodic_boundary(self, start_row, end_row, start_col, end_col):
         row_indices = np.arange(start_row, end_row) % self.height
         col_indices = np.arange(start_col, end_col) % self.width
-        return self.img2[np.ix_(row_indices, col_indices)]
+        return self.img_gray[np.ix_(row_indices, col_indices)]
 
     def patch_boundaries(self,coord):
         k,l = coord
@@ -57,16 +48,6 @@ class PatchedImage():
                 patch = np.array(self.img[i-self.size:i+self.size+1, j-self.size:j+self.size+1])
                 #patch[np.isnan(patch)] = 0
                 tab.append(patch.flatten())
-        return np.array(tab)
-    
-    def set_patch_flat_rgb(self):
-        tab = []
-        for i in range(self.size,self.height-self.size):
-            for j in range(self.size,self.width-self.size):
-                patch = np.array(self.img3[i-self.size:i+self.size+1, j-self.size:j+self.size+1])
-                #patch[np.isnan(patch)] = 0
-                #print(patch.flatten().reshape(((self.size*2+1)**2,3)))
-                tab.append(patch.flatten().reshape(((self.size*2+1)**2,3)))
         return np.array(tab)
     
     def set_working_patch(self,coord):
@@ -82,26 +63,19 @@ class PatchedImage():
         else:
             self.img = self.img*(1-masque)
             self.masque = masque
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.masque[i,j] == 1:
-                    #self.img[i,j] = 0
-                    self.img2[i,j] = np.nan
+        self.img_gray[self.masque == 1] = np.nan
+        #self.masque = self.masque[...,None]
+        
         #self.masque = masque
         self.zone = self.zone*(1-self.masque)
         outlines = self.outlines_target()
         self.zone[outlines[:,0],outlines[:,1]] = 1
         self.patch_flat = self.set_patch_flat()
-        self.patch_flat_rgb = self.set_patch_flat_rgb()
         self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
 
     def get_patch(self,coord):
         a,b,c,d = self.patch_boundaries(coord)
         return self.img[a:b,c:d]
-    
-    def get_patch_rgb(self,coord):
-        a,b,c,d = self.patch_boundaries(coord)
-        return self.img3[a:b,c:d]
     
     def set_patch(self,coord,patch): 
         #a,b,c,d = self.patch_boundaries(coord)
@@ -111,11 +85,8 @@ class PatchedImage():
         #            self.img[i, j] = patch[i - a, j - c]
         i,j = coord
         self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
-        self.img2[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
-    
-    def set_patch_rgb(self,coord,patch):
-        i,j = coord
-        self.img3[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
+        self.img_gray[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = rgb2gray(patch)
+        #self.working_patch = (i,j)
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -160,8 +131,8 @@ class PatchedImage():
     def set_gradient_patch(self, coord):
         if self.zone[coord] == 0:
             raise ValueError("Trying to calculate the gradient in the target region")
-        
-        a,b,c,d = self.patch_boundaries(coord)
+        k,l = coord
+        a,b,c,d = k-1,k+2,l-1,l+2 #self.patch_boundaries(coord)
         im_patch = self.periodic_boundary(a-1,b+1,c-1,d+1)
         xgrad, ygrad = np.gradient(im_patch)
         self.gradient[0][a:b,c:d] = xgrad[1:b-a+1,1:d-c+1]
@@ -181,12 +152,19 @@ class PatchedImage():
         k,l = coord
         self.set_gradient_patch(coord)
         a,b,c,d = self.patch_boundaries(coord)
-        for i in range(a,b):
-            for j in range(c,d):
-                if self.zone[i,j] != 0:
-                    grad_ij = (self.gradient[0][i,j],self.gradient[1][i,j])
-                    normal_ij = self.compute_normal(coord)
-                    self.data[i,j] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
+        if self.zone[k,l] == 1:
+            grad_ij = (self.gradient[0][k,l],self.gradient[1][k,l])
+            normal_ij = self.compute_normal((k,l))
+            self.data[k,l] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
+
+
+        #for i in range(a-1,b+1):
+        #    for j in range(c-1,d+1):
+        #        if self.zone[i,j] == 1:
+        #            grad_ij = (self.gradient[0][i,j],self.gradient[1][i,j])
+        #            normal_ij = self.compute_normal((i,j))
+        #            self.data[i,j] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
+
         return self.data[k,l]
     
     def masked_distance(self, patch1, patch2):
@@ -205,18 +183,14 @@ class PatchedImage():
         masque = (patch != 0).flatten()
         self.current_mask = masque
         ind = self.tree.query([patch.flatten()], k=2,return_distance=False, dualtree=True) #dual tree pour les images plus grandes
-        if self.rgb:
-            pato = self.patch_flat_rgb[ind[0,1]][:(p_size**2)]
-            return (patchs[ind[0,1]][:(p_size**2)]* (1-masque)).reshape((p_size,p_size)),(pato* (1-masque[...,None])).reshape((p_size,p_size,3))
-        return (patchs[ind[0,1]][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
+        return (patchs[ind[0,1]][:(3*p_size**2)]* (1-masque)).reshape((p_size,p_size,3))
     
     def reconstruction(self,coord): #un patch
-        if self.rgb:
-            patnb,patorgb = self.find_nearest_patch(coord)
-            reconsnb = self.get_patch(coord)+patnb
-            reconsrgb = self.get_patch_rgb(coord)+patorgb*255
-            self.set_patch(coord,reconsnb)
-            self.set_patch_rgb(coord,reconsrgb)
+        pato = self.find_nearest_patch(coord)
+        recons = self.get_patch(coord)+pato
+        #plt.imshow(recons,cmap="gray",vmin=0,vmax=255)
+        #plt.show()
+        self.set_patch(coord,recons)
         k,l = coord
         #probablement à changer ce q'il y a en dessous
         self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
@@ -236,7 +210,7 @@ class PatchedImage():
         plt.show()
 
     def show_img(self):
-        plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+        plt.imshow(cv2.cvtColor(self.img, cv2.COLOR_BGR2RGB))
         plt.show()
 
     def show_patch_in_img(self, coord = None):

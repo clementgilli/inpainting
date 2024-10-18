@@ -1,10 +1,11 @@
 from patchedimage import PatchedImage
+from patchedimage_color import PatchedImageColor
 from utilities import *
 import sys
 
-imgp = PatchedImage(sys.argv[1],size=int(sys.argv[2]))
+imgp = PatchedImageColor(sys.argv[1],size=int(sys.argv[2]))
 print("====Initialisation====")
-imgp.set_masque(leaf_size=max(imgp.width//2,imgp.height//2),draw=True)
+imgp.set_masque(leaf_size=max(imgp.width//2,imgp.height//2))
 imgp.set_priorities()
 
 print("====Reconstruction====")
