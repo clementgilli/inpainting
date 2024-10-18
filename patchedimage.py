@@ -1,8 +1,5 @@
 from utilities import *
 from draw import *
-import imageio
-import os
-from skimage.color import rgb2gray
 
 class PatchedImage():
     def __init__(self, filename, size):
@@ -64,12 +61,7 @@ class PatchedImage():
         else:
             self.img = self.img*(1-masque)
             self.masque = masque
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.masque[i,j] == 1:
-                    #self.img[i,j] = 0
-                    self.img2[i,j] = np.nan
-        #self.masque = masque
+        self.img2[self.masque == 1] = np.nan
         self.zone = self.zone*(1-self.masque)
         outlines = self.outlines_target()
         self.zone[outlines[:,0],outlines[:,1]] = 1
@@ -133,8 +125,8 @@ class PatchedImage():
     def set_gradient_patch(self, coord):
         if self.zone[coord] == 0:
             raise ValueError("Trying to calculate the gradient in the target region")
-        
-        a,b,c,d = self.patch_boundaries(coord)
+        k,l = coord
+        a,b,c,d = k-1,k+2,l-1,l+2 #self.patch_boundaries(coord)
         im_patch = self.periodic_boundary(a-1,b+1,c-1,d+1)
         xgrad, ygrad = np.gradient(im_patch)
         self.gradient[0][a:b,c:d] = xgrad[1:b-a+1,1:d-c+1]
@@ -154,12 +146,16 @@ class PatchedImage():
         k,l = coord
         self.set_gradient_patch(coord)
         a,b,c,d = self.patch_boundaries(coord)
-        for i in range(a,b):
-            for j in range(c,d):
-                if self.zone[i,j] != 0:
-                    grad_ij = (self.gradient[0][i,j],self.gradient[1][i,j])
-                    normal_ij = self.compute_normal(coord)
-                    self.data[i,j] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
+        if self.zone[k,l] == 1:
+            grad_ij = (self.gradient[0][k,l],self.gradient[1][k,l])
+            normal_ij = self.compute_normal((k,l))
+            self.data[k,l] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
+        #for i in range(a,b):
+        #    for j in range(c,d):
+        #        if self.zone[i,j] != 0:
+        #            grad_ij = (self.gradient[0][i,j],self.gradient[1][i,j])
+        #            normal_ij = self.compute_normal(coord)
+        #            self.data[i,j] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
         return self.data[k,l]
     
     def masked_distance(self, patch1, patch2):
@@ -216,7 +212,7 @@ class PatchedImage():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_iter = False, display_img = False):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save=False):
         i = 0
         fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
         #ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
@@ -234,14 +230,14 @@ class PatchedImage():
                 cv2.imshow('frame',self.img/255)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+            if save:
                 cv2.imwrite(f"gifs/{i}.jpg", self.img)
             #self.show_img()
-        if display_img:
+        if save:
             images = []
             filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
             for filename in filenames:
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-
         return self.img

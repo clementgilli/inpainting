@@ -1,8 +1,5 @@
 from utilities import *
 from draw import *
-import imageio
-import os
-from skimage.color import rgb2gray
 
 class PatchedImageColor():
     def __init__(self, filename, size):
@@ -64,9 +61,6 @@ class PatchedImageColor():
             self.img = self.img*(1-masque)
             self.masque = masque
         self.img_gray[self.masque == 1] = np.nan
-        #self.masque = self.masque[...,None]
-        
-        #self.masque = masque
         self.zone = self.zone*(1-self.masque)
         outlines = self.outlines_target()
         self.zone[outlines[:,0],outlines[:,1]] = 1
@@ -221,7 +215,7 @@ class PatchedImageColor():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_iter = False, display_img = False):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save=False):
         i = 0
         fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
         #ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
@@ -239,14 +233,14 @@ class PatchedImageColor():
                 cv2.imshow('frame',self.img/255)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+            if save:
                 cv2.imwrite(f"gifs/{i}.jpg", self.img)
             #self.show_img()
-        if display_img:
+        if save:
             images = []
             filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
             for filename in filenames:
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-
         return self.img

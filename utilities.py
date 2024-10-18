@@ -4,6 +4,9 @@ import matplotlib.patches as patches
 from scipy.signal import convolve2d
 from sklearn.neighbors import BallTree
 import numba
+from skimage.color import rgb2gray
+import imageio
+import os
     
 def masque_carre(c1,c2,imgsize):
     masque = np.zeros((imgsize[0],imgsize[1]))
