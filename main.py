@@ -15,6 +15,7 @@ except ValueError:
 print("====Initialisation====")
 imgp.set_masque(leaf_size=max(imgp.width,imgp.height))
 imgp.set_priorities()
+#imgp.show_img(search_zone=True)
 
 print("====Reconstruction====")
 imgp.reconstruction_auto(display_img=True,save=True)

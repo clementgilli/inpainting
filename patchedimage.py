@@ -47,7 +47,7 @@ class PatchedImage():
     def set_patch_flat(self):
         tab = []
         if self.search_mode == "Local":
-            a,b = self.search_zone(min(self.width//4,self.height//4))
+            a,b = self.search_zone(min(self.width,self.height)//(2*self.size)) #totally arbitrary
         else:
             a,b = (self.size,self.height-self.size),(self.size,self.width-self.size)
         self.search_zone_coord = (a,b)
@@ -76,7 +76,13 @@ class PatchedImage():
         outlines = self.outlines_target()
         self.zone[outlines[:,0],outlines[:,1]] = 1
         self.patch_flat = self.set_patch_flat()
+        a,b = self.search_zone_coord
+        print(f"Size of the search zone : {(b[1]-b[0])}x{(a[1]-a[0])}")
+        print("==Tree construction==")
+        t1 = time()
         self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
+        t2 = time()
+        print(f"{t2-t1:.3f} sec")
 
     def get_patch(self,coord):
         a,b,c,d = self.patch_boundaries(coord)
@@ -215,7 +221,6 @@ class PatchedImage():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         if search_zone:
             c1,c2 = self.search_zone_coord
-            print(c1,c2)
             plt.plot([c2[0],c2[0],c2[1],c2[1],c2[0]],[c1[0],c1[1],c1[1],c1[0],c1[0]],color=(0,1,0))
         plt.show()
 
