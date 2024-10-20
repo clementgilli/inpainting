@@ -236,7 +236,7 @@ class PatchedImageColor():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save=False):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False ,save_gif=False):
         i = 0
         t1 = time()
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
@@ -252,16 +252,20 @@ class PatchedImageColor():
                 cv2.imshow('frame',self.img/255)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-            if save:
+            if save_gif:
                 cv2.imwrite(f"gifs/{i}.jpg", self.img)
             #self.show_img()
+        cv2.destroyAllWindows()
         t2 = time()
         print(f"Reconstruct in {t2-t1:.3f} sec")
-        if save:
+        if save_result:
+            cv2.imwrite(f"results/res.jpg", self.img)
+        if save_gif:
             images = []
             filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
             for filename in filenames:
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-        return self.img
+        cv2.imshow('Result',self.img/255)
+        cv2.waitKey(0)

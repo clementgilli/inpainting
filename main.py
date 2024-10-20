@@ -18,6 +18,4 @@ imgp.set_priorities()
 #imgp.show_img(search_zone=True)
 
 print("====Reconstruction====")
-imgp.reconstruction_auto(display_img=True,save=True)
-
-imgp.show_img()
+imgp.reconstruction_auto(display_img=True,save_result=True,save_gif=False)
