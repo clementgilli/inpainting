@@ -8,16 +8,15 @@ if len(sys.argv) != 3:
     sys.exit(1)
     
 try :
-    imgp = PatchedImageColor(sys.argv[1],size=int(sys.argv[2]))
+    imgp = PatchedImageColor(sys.argv[1],size=int(sys.argv[2]),search_mode="Local")
 except ValueError:
-    imgp = PatchedImage(sys.argv[1],size=int(sys.argv[2]))
+    imgp = PatchedImage(sys.argv[1],size=int(sys.argv[2]),search_mode="Local")
 
 print("====Initialisation====")
-imgp.set_masque(leaf_size=max(imgp.width//2,imgp.height//2))
+imgp.set_masque(leaf_size=max(imgp.width,imgp.height))
 imgp.set_priorities()
 
 print("====Reconstruction====")
-
-imgp.reconstruction_auto(display_img=True,save=False)
+imgp.reconstruction_auto(display_img=True,save=True)
 
 imgp.show_img()

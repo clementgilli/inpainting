@@ -2,9 +2,10 @@ from utilities import *
 from draw import *
 
 class PatchedImage():
-    def __init__(self, filename, size):
+    def __init__(self, filename, size, search_mode="Full"): 
         self.filename = filename
-
+        self.search_mode = search_mode #Full or Local
+        
         self.img = plt.imread(filename).copy().astype(np.float64)
         self.img2 = plt.imread(filename).copy().astype(np.float64)
         
@@ -19,6 +20,7 @@ class PatchedImage():
         self.patch_flat = None
         self.tree = None #leaf_size à changer ? en fonction de la taille de l'image
         self.current_mask = None
+        self.search_zone_coord = None
 
         self.zone = np.ones(self.img.shape)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
@@ -39,10 +41,18 @@ class PatchedImage():
         k,l = coord
         return k-self.size,k+self.size+1,l-self.size,l+self.size+1
     
+    def search_zone(self,size_search):
+        return search_zone_compiled(self.height,self.width,self.size,self.masque,size_search)
+    
     def set_patch_flat(self):
         tab = []
-        for i in range(self.size,self.height-self.size):
-            for j in range(self.size,self.width-self.size):
+        if self.search_mode == "Local":
+            a,b = self.search_zone(min(self.width//4,self.height//4))
+        else:
+            a,b = (self.size,self.height-self.size),(self.size,self.width-self.size)
+        self.search_zone_coord = (a,b)
+        for i in range(a[0],a[1]):#range(self.size,self.height-self.size):
+            for j in range(b[0],b[1]):#range(self.size,self.width-self.size):
                 patch = np.array(self.img[i-self.size:i+self.size+1, j-self.size:j+self.size+1])
                 #patch[np.isnan(patch)] = 0
                 tab.append(patch.flatten())
@@ -84,8 +94,9 @@ class PatchedImage():
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
-            for i in range(self.size,self.height-self.size): #+1 ?
-                for j in range(self.size,self.width-self.size): #+1 ?
+            a,b = self.search_zone_coord
+            for i in range(a[0],a[1]):#range(self.size,self.height-self.size):
+                for j in range(b[0],b[1]):#range(self.size,self.width-self.size):
                     if self.zone[i,j] == 1:
                         conf = self.set_confidence_patch((i,j))
                         dat = self.set_data_patch((i,j))
@@ -200,8 +211,12 @@ class PatchedImage():
         plt.title(f"Priority : {self.priority[k,l]:.3f}")
         plt.show()
 
-    def show_img(self):
+    def show_img(self,search_zone=False):
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+        if search_zone:
+            c1,c2 = self.search_zone_coord
+            print(c1,c2)
+            plt.plot([c2[0],c2[0],c2[1],c2[1],c2[0]],[c1[0],c1[1],c1[1],c1[0],c1[0]],color=(0,1,0))
         plt.show()
 
     def show_patch_in_img(self, coord = None):
@@ -214,9 +229,7 @@ class PatchedImage():
 
     def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save=False):
         i = 0
-        fig, ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
-        #ax.imshow(self.img, cmap='gray',vmin=0,vmax=255)
-        #fig.savefig(f"gifs/{i}.jpg")
+        t1 = time()
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
             self.set_priorities()
             coord = self.find_max_priority()
@@ -233,6 +246,8 @@ class PatchedImage():
             if save:
                 cv2.imwrite(f"gifs/{i}.jpg", self.img)
             #self.show_img()
+        t2 = time()
+        print(f"Reconstruct in {t2-t1:.3f} sec")
         if save:
             images = []
             filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
@@ -240,4 +255,4 @@ class PatchedImage():
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-        return self.img
+        #return self.img

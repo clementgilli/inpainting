@@ -7,21 +7,57 @@ import numba
 from skimage.color import rgb2gray
 import imageio
 import os
+from time import time
     
-def masque_carre(c1,c2,imgsize):
-    masque = np.zeros((imgsize[0],imgsize[1]))
-    masque[c1[0]:c2[0]+1,c1[1]:c2[1]+1] = 1
+def masque_carre(c1,c2,imgsize,color=False):
+    if color:
+        masque = np.zeros((imgsize[0],imgsize[1],3))
+        masque[c1[0]:c2[0]+1,c1[1]:c2[1]+1] = [1,1,1]
+    else:
+        masque = np.zeros((imgsize[0],imgsize[1]))
+        masque[c1[0]:c2[0]+1,c1[1]:c2[1]+1] = 1
     return masque
 
-def masque_circulaire(c,r,imgsize):
-    masque = np.zeros((imgsize[0],imgsize[1]))
+def masque_circulaire(c,r,imgsize,color=False):
+    if color:
+        masque = np.zeros((imgsize[0],imgsize[1],3))
+    else:
+        masque = np.zeros((imgsize[0],imgsize[1]))
     for i in range(imgsize[0]):
         for j in range(imgsize[1]):
             if (i-c[0])**2+(j-c[1])**2 <= r**2:
-                masque[i,j] = 1
+                if color:
+                    masque[i,j] = [1,1,1]
+                else:
+                    masque[i,j] = 1
     return masque
 
-@numba.jit(nopython=True,fastmath=True)
+@numba.jit(nopython=True)
+def search_zone_compiled(height,width,size,masque,size_search):
+        minx,maxx,miny,maxy = width+1,-1,height+1,-1
+        for i in range(height):
+            for j in range(width):
+                if masque[i,j] == 1:
+                    if i < miny:
+                        miny = i
+                    elif i > maxy:
+                        maxy = i 
+                    if j < minx:
+                        minx = j
+                    elif j > maxx:
+                        maxx = j
+        if miny-size_search < 0 + size:
+            miny = size+size_search
+        if minx-size_search < 0 + size:
+            minx = size+size_search
+        if maxy+size_search >= height-size:
+            maxy = height-size - size_search
+        if maxx+size_search >= width-size:
+            maxx = width-size - size_search
+        
+        return (miny-size_search,maxy+size_search),(minx-size_search,maxx+size_search)
+
+@numba.jit(nopython=True)
 def masked_dist(patch1, patch2, mask):
     dist = np.linalg.norm((patch1 - patch2) * mask)
     return dist
@@ -45,7 +81,7 @@ def outlines_target_compiled(height,width,masque):
 def orthogonal_vector(v):
     return np.array([-v[1], v[0]])
 
-@numba.jit(nopython=True,fastmath=True)
+@numba.jit(nopython=True)
 def below_line(x,y, a,b, c,d):
     if a - c == 0: #pour eviter la division par 0 : cas d'une droite verticale
         return x < a
@@ -74,9 +110,11 @@ def mean_valid_gradient_compiled(i, j, grad_y, grad_x, height, width):
         # Calculate the mean of valid gradients for each axis
 
     if valid_gradients_y == []:
+        print("bug")
         valid_gradients_y = [0] #à changer
     if valid_gradients_x == []:
         valid_gradients_x = [0] #à changer
+        print("bug")
         #print(i,j)
         #plt.imshow(grad_y)
         #plt.show()
