@@ -22,11 +22,11 @@ class Resampling():
         if self.color:
             hsv = rgb2hsv(self.imgp.img)
             hsv = rgb2hsv(self.imgp.img)
-            filter = filtergauss(hsv[:,:,2])
+            filter = filtergauss(hsv[:,:,2],M)
             hsv[:,:,2] = filter
             im = hsv2rgb(hsv)*255
         else:
-            im = filtergauss(self.imgp.img)
+            im = filtergauss(self.imgp.img,M)
         cv2.imwrite(f"undersampling.jpg", im[::M,::M])
         img = PatchedImage("undersampling.jpg",self.imgp.size//M,search_mode="Local")
         os.remove("undersampling.jpg")

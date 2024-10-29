@@ -204,8 +204,8 @@ def filterlow(im,L):
     imtf[~mask]=0
     return np.real(np.fft.ifft2(imtf))
 
-def filtergauss(im):
-    """applique un filtre passe-bas gaussien. coupe approximativement a f0/4"""
+def filtergauss(im,L):
+    """applique un filtre passe-bas gaussien. coupe approximativement a f0/2L"""
     (ty,tx)=im.shape
     imt=np.float32(im.copy())
     pi=np.pi
@@ -217,7 +217,7 @@ def filtergauss(im):
     # C'est une gaussienne, dont la moyenne est choisie de sorte que
     # l'integrale soit la meme que celle du filtre passe bas
     # (2*pi*sig^2=1/4*x*y (on a suppose que tx=ty))
-    sig=(tx*ty)**0.5/2/(pi**0.5)
-    mask=np.exp(-(XX**2+YY**2)/2/sig**2)
+    sig = (tx * ty)**0.5 / (2 * L * (pi**0.5))
+    mask = np.exp(-(XX**2 + YY**2) / (2 * sig**2))
     imtf=np.fft.fft2(imt)*mask
     return np.real(np.fft.ifft2(imtf))
