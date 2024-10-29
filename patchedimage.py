@@ -21,6 +21,8 @@ class PatchedImage():
         self.tree = None #leaf_size à changer ? en fonction de la taille de l'image
         self.current_mask = None
         self.search_zone_coord = None
+        self.patch_coords = None
+        self.save_coords = {}
 
         self.zone = np.ones(self.img.shape)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
         self.working_patch = (-1,-1)
@@ -46,8 +48,9 @@ class PatchedImage():
     
     def set_patch_flat(self):
         tab = []
+        coords = []
         if self.search_mode == "Local":
-            a,b = self.search_zone(min(self.width,self.height)//(2*self.size)) #totally arbitrary
+            a,b = self.search_zone(int(5*np.sqrt(min(self.width,self.height)))) #totally arbitrary
         else:
             a,b = (self.size,self.height-self.size),(self.size,self.width-self.size)
         self.search_zone_coord = (a,b)
@@ -56,6 +59,8 @@ class PatchedImage():
                 patch = np.array(self.img[i-self.size:i+self.size+1, j-self.size:j+self.size+1])
                 #patch[np.isnan(patch)] = 0
                 tab.append(patch.flatten())
+                coords.append((i, j))
+        self.patch_coords = np.array(coords)
         return np.array(tab)
     
     def set_working_patch(self,coord):
@@ -107,6 +112,8 @@ class PatchedImage():
                         conf = self.set_confidence_patch((i,j))
                         dat = self.set_data_patch((i,j))
                         self.priority[i,j] = conf*dat
+                        #sigma = 0.5
+                        #self.priority[i,j] = conf*np.exp(dat/(2*sigma**2))
         else:
             k,l = self.working_patch
             conf = self.set_confidence_patch((k,l))
@@ -191,7 +198,16 @@ class PatchedImage():
         masque = (patch != 0).flatten()
         self.current_mask = masque
         ind = self.tree.query([patch.flatten()], k=2,return_distance=False, dualtree=True) #dual tree pour les images plus grandes
-        return (patchs[ind[0,1]][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
+        #X = np.concatenate((patchs[ind[0,1]].transpose(),patchs[ind[0,0]].transpose()))
+        #Pp = patch*np.ones((p_size,1))
+        #mat_Pp = np.concatenate((Pp,Pp))
+        #gram_matrix = (mat_Pp - X).T @ (mat_Pp - X)
+        #print(gram_matrix)
+        nearest_index = ind[0,1]
+        y_in_image, x_in_image = self.patch_coords[nearest_index]
+        self.save_coords[coord] = (y_in_image, x_in_image)
+
+        return (patchs[nearest_index][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
     
     def reconstruction(self,coord): #un patch
         pato = self.find_nearest_patch(coord)
@@ -263,5 +279,18 @@ class PatchedImage():
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-        cv2.imshow('Result',self.img/255)
+        #cv2.imshow('Result',self.img/255)
         cv2.waitKey(0)
+
+    def reconstruct_with_dict(self,coords):
+        if coords == {}:
+            raise ValueError("No coordinates saved")
+        for coord in coords:
+            k,l = coords[coord]
+            pat = self.get_patch(coords[coord]) * (1-self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1])
+            self.set_patch(coord,pat)
+
+            #self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
+            #self.zone[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 2
+
+            

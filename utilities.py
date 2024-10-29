@@ -60,7 +60,27 @@ def search_zone_compiled(height,width,size,masque,size_search):
 @numba.jit(nopython=True)
 def masked_dist(patch1, patch2, mask):
     dist = np.linalg.norm((patch1 - patch2) * mask)
-    return dist
+    return dist #* hellinger_distance(patch1,patch2)
+
+@numba.jit(nopython=True)
+def hellinger_distance(patch1, patch2, bins=16):
+    patch1 = patch1.reshape((9, 9, 3))
+    patch2 = patch2.reshape((9, 9, 3))
+    
+    histo1_r = np.histogram(patch1[:, :, 0], bins=bins, range=(0, 256))[0]/81
+    histo1_g = np.histogram(patch1[:, :, 1], bins=bins, range=(0, 256))[0]/81
+    histo1_b = np.histogram(patch1[:, :, 2], bins=bins, range=(0, 256))[0]/81
+    
+    histo2_r = np.histogram(patch2[:, :, 0], bins=bins, range=(0, 256))[0]/81
+    histo2_g = np.histogram(patch2[:, :, 1], bins=bins, range=(0, 256))[0]/81
+    histo2_b = np.histogram(patch2[:, :, 2], bins=bins, range=(0, 256))[0]/81
+    
+    hellinger_r = np.sqrt(1 - np.sum(np.sqrt(histo1_r * histo2_r)))
+    hellinger_g = np.sqrt(1 - np.sum(np.sqrt(histo1_g * histo2_g)))
+    hellinger_b = np.sqrt(1 - np.sum(np.sqrt(histo1_b * histo2_b)))
+    
+    distance = (hellinger_r + hellinger_g + hellinger_b) / 3
+    return distance
 
 @numba.jit(nopython=True)
 def neighbours(i,j):
@@ -162,3 +182,10 @@ def compute_normal_compiled(coord, zone, height, width):
         return (-tengeante_y/norme,tengeante_x/norme)
     else:
         return (tengeante_y/norme,-tengeante_x/norme)
+    
+
+def upsampling_dict(dict,L):
+    new_dict = {}
+    for key in dict.keys():
+        new_dict[(key[0]*L,key[1]*L)] = (dict[key][0]*L,dict[key][1]*L)
+    return new_dict
