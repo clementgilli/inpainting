@@ -189,3 +189,35 @@ def upsampling_dict(dict,L):
     for key in dict.keys():
         new_dict[(key[0]*L,key[1]*L)] = (dict[key][0]*L,dict[key][1]*L)
     return new_dict
+
+def filterlow(im,L): 
+    (ty,tx)=im.shape
+    imt=np.float32(im.copy())
+    pi=np.pi
+    XX=np.concatenate((np.arange(0,tx/2+1),np.arange(-tx/2+1,0)))
+    XX=np.ones((ty,1))@(XX.reshape((1,tx)))
+    
+    YY=np.concatenate((np.arange(0,ty/2+1),np.arange(-ty/2+1,0)))
+    YY=(YY.reshape((ty,1)))@np.ones((1,tx))
+    mask=(abs(XX)<tx/(2*L)) & (abs(YY)<ty/(2*L))
+    imtf=np.fft.fft2(imt)
+    imtf[~mask]=0
+    return np.real(np.fft.ifft2(imtf))
+
+def filtergauss(im):
+    """applique un filtre passe-bas gaussien. coupe approximativement a f0/4"""
+    (ty,tx)=im.shape
+    imt=np.float32(im.copy())
+    pi=np.pi
+    XX=np.concatenate((np.arange(0,tx/2+1),np.arange(-tx/2+1,0)))
+    XX=np.ones((ty,1))@(XX.reshape((1,tx)))
+    
+    YY=np.concatenate((np.arange(0,ty/2+1),np.arange(-ty/2+1,0)))
+    YY=(YY.reshape((ty,1)))@np.ones((1,tx))
+    # C'est une gaussienne, dont la moyenne est choisie de sorte que
+    # l'integrale soit la meme que celle du filtre passe bas
+    # (2*pi*sig^2=1/4*x*y (on a suppose que tx=ty))
+    sig=(tx*ty)**0.5/2/(pi**0.5)
+    mask=np.exp(-(XX**2+YY**2)/2/sig**2)
+    imtf=np.fft.fft2(imt)*mask
+    return np.real(np.fft.ifft2(imtf))
