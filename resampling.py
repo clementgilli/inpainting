@@ -18,7 +18,7 @@ class Resampling():
         self.imgp.masque = self.masque
 
     def one_level(self,M=2):
-        self.imgp.show_img()
+        #self.imgp.show_img()
         if self.color:
             hsv = rgb2hsv(self.imgp.img)
             hsv = rgb2hsv(self.imgp.img)
@@ -32,11 +32,13 @@ class Resampling():
         os.remove("undersampling.jpg")
         masque = self.masque[::M,::M]
         img.set_masque(128,False,masque)
-        img.show_img()
+        #img.show_img()
         img.set_priorities()
-        img.reconstruction_auto(display_img=False,save_result=False,save_gif=False)
-        img.show_img()
+        img.reconstruction_auto(display_img=True,save_result=False,save_gif=False,show_result=False)
+        #img.show_img()
 
         self.imgp.reconstruct_with_dict(upsampling_dict(img.save_coords,M))
 
-        self.imgp.show_img()
+        print("Press 'q' to quit")
+        cv2.imshow('Result',self.imgp.img/255)
+        cv2.waitKey(0)

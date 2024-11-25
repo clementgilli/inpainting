@@ -248,7 +248,7 @@ class PatchedImage():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False, save_path = "default/default.png", save_gif=False):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False, save_path = "default/default.png", save_gif=False, show_result=True):
         i = 0
         t1 = time()
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
@@ -280,8 +280,10 @@ class PatchedImage():
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-        #cv2.imshow('Result',self.img/255)
-        cv2.waitKey(0)
+        if show_result:
+            print("Press 'q' to quit.")
+            cv2.imshow('Result',self.img/255)
+            cv2.waitKey(0)
 
     def reconstruct_with_dict(self,coords):
         if coords == {}:

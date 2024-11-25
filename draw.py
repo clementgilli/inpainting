@@ -51,7 +51,7 @@ def draw_on_image(image_path):
     cv2.setMouseCallback('image', draw_with_mouse, param=(image_float, overlay_image, mask))
 
     cv2.createTrackbar('Taille du pinceau', 'image', brush_size, 50, update_brush_size)
-
+    print("Press 'q' when you are done.")
     while True:
         alpha = 0.6 
         if is_gray:

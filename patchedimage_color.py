@@ -50,7 +50,7 @@ class PatchedImageColor():
         tab = []
         coords = []
         if self.search_mode == "Local":
-            a,b = self.search_zone(int(5*np.sqrt(min(self.width,self.height)))) #totally arbitrary
+            a,b = self.search_zone(int(5*(min(self.width,self.height))**0.4)) #totally arbitrary
         else:
             a,b = (self.size,self.height-self.size),(self.size,self.width-self.size)
         self.search_zone_coord = (a,b)
@@ -248,7 +248,7 @@ class PatchedImageColor():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False ,save_gif=False):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False ,save_gif=False, show_result=False):
         i = 0
         t1 = time()
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
@@ -279,13 +279,23 @@ class PatchedImageColor():
                 images.append(imageio.imread("./gifs/"+str(filename)+".jpg"))
                 os.remove("./gifs/"+str(filename)+".jpg")
             imageio.mimsave('./gifs/test.gif', images)
-        cv2.imshow('Result',self.img/255)
-        cv2.waitKey(0)
+        if show_result:
+            print("Press 'q' to quit.")
+            cv2.imshow('Result',self.img/255)
+            cv2.waitKey(0)
 
     def reconstruct_with_dict(self,coords):
         if coords == {}:
             raise ValueError("No coordinates saved")
         for coord in coords:
             k,l = coords[coord]
-            pat = self.get_patch(coords[coord]) #* (1-self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1])
+            #pat = self.get_patch(coords[coord]) * (1-self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1])
+
+            pat = self.get_patch(coords[coord])
+            masque_2d = (1 - self.masque[k - self.size:k + self.size + 1, l - self.size:l + self.size + 1])
+            masque_3d = masque_2d[:, :, np.newaxis]
+            pat = pat * masque_3d
+
             self.set_patch(coord,pat)
+
+            self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
