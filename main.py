@@ -18,7 +18,7 @@ if len(sys.argv) == 4:
 else:
 
     try :
-        imgp = PatchedImageColor(sys.argv[1],size=int(sys.argv[2]),search_mode="Full")
+        imgp = PatchedImageColor(sys.argv[1],size=int(sys.argv[2]),search_mode="Local")
     except ValueError:
         imgp = PatchedImage(sys.argv[1],size=int(sys.argv[2]),search_mode="Local")
 
