@@ -168,8 +168,9 @@ def compute_normal_compiled(coord, zone, height, width):
                     target_neighbors = (ni,nj)
 
     if len(border_neighbors) < 2:
-        print("bug à",coord)
-        raise ValueError('no target neighbors found')
+        return (0,0)
+        #print("bug à",coord)
+        #raise ValueError('no target neighbors found')
 
     border_neighbors=sorted(border_neighbors)
     a,b,c,d = border_neighbors[0][0],border_neighbors[0][1],border_neighbors[-1][0],border_neighbors[-1][1]
