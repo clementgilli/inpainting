@@ -105,7 +105,6 @@ class PatchedImage():
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
-            print(self.search_zone_coord)
             a,b = self.search_zone_coord
             for i in range(a[0],a[1]):#range(self.size,self.height-self.size):
                 for j in range(b[0],b[1]):#range(self.size,self.width-self.size):
@@ -249,7 +248,7 @@ class PatchedImage():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False ,save_gif=False):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False, save_path = "default/default.png", save_gif=False):
         i = 0
         t1 = time()
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
@@ -272,7 +271,8 @@ class PatchedImage():
         t2 = time()
         print(f"Reconstruct in {t2-t1:.3f} sec")
         if save_result:
-            cv2.imwrite(f"results/res.jpg", self.img)
+            print("Saving result", save_path)
+            cv2.imwrite(save_path, self.img)
         if save_gif:
             images = []
             filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
