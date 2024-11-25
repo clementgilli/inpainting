@@ -1,7 +1,7 @@
-from src.patchedimage import PatchedImage
-from src.patchedimage_color import PatchedImageColor
-from src.resampling import Resampling
-from src.utilities import *
+from patchedimage import PatchedImage
+from patchedimage_color import PatchedImageColor
+from resampling import Resampling
+from utilities import *
 import sys
 
 if len(sys.argv) < 3:
