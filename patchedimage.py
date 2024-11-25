@@ -105,6 +105,7 @@ class PatchedImage():
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
+            print(self.search_zone_coord)
             a,b = self.search_zone_coord
             for i in range(a[0],a[1]):#range(self.size,self.height-self.size):
                 for j in range(b[0],b[1]):#range(self.size,self.width-self.size):
