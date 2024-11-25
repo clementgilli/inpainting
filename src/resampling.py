@@ -1,8 +1,8 @@
-from patchedimage import PatchedImage
-from patchedimage_color import PatchedImageColor
-from utilities import *
+from .patchedimage import PatchedImage
+from .patchedimage_color import PatchedImageColor
+from .utilities import *
 import cv2
-from draw import draw_on_image
+from .draw import draw_on_image
 from skimage.color import rgb2hsv, hsv2rgb
 
 class Resampling():
