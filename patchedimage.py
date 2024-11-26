@@ -72,7 +72,7 @@ class PatchedImage():
     def set_masque(self,leaf_size,draw=True,masque=None): #1 pour le masque, 0 pour le reste
         #self.img = self.img*(1-masque)
         if draw:
-            self.img, self.masque = draw_on_image(self.filename)
+            self.img, self.masque = draw_on_image(self.filename,"saves/mask.npy")
         else:
             self.img = self.img*(1-masque)
             self.masque = masque
@@ -206,7 +206,6 @@ class PatchedImage():
         nearest_index = ind[0,1]
         y_in_image, x_in_image = self.patch_coords[nearest_index]
         self.save_coords[coord] = (y_in_image, x_in_image)
-
         return (patchs[nearest_index][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
     
     def reconstruction(self,coord): #un patch

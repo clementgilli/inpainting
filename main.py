@@ -32,4 +32,4 @@ else:
     #imgp.show_img(search_zone=True)
 
     print("====Reconstruction====")
-    imgp.reconstruction_auto(display_img=True,save_result=True,save_gif=False,show_result=True)
+    imgp.reconstruction_auto(display_img=True,save_result=True,save_gif=True,show_result=True)
