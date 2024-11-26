@@ -71,24 +71,58 @@ class PatchedImageColor():
 
     def set_masque(self,leaf_size,draw=True,masque=None): #1 pour le masque, 0 pour le reste
         #self.img = self.img*(1-masque)
+        if self.img.dtype == np.float32 or self.img.dtype == np.float64:
+            self.img = (self.img * 255).astype(np.uint8)  # Reconvertir en uint8
+        if self.img.shape[-1] == 3:  # Si c'est une image RGB
+            self.img = self.img[:, :, ::-1]  # Convertir de RGB à BGR
+
         if draw:
-            self.img, self.masque = draw_on_image(self.filename)
+            self.img, self.masque = draw_on_image(self.filename, "saves/mask.npy")
         else:
-            self.img = self.img*(1-masque)
-            self.masque3d = masque
-            self.masque = np.all(masque == [1, 1, 1], axis=-1)
+            if masque is None:
+                raise ValueError("Aucun masque fourni alors que draw=False.")
+            
+            # Vérifier les dimensions et le type
+            if masque.shape[:2] != self.img.shape[:2]:
+                raise ValueError("Les dimensions du masque et de l'image ne correspondent pas.")
+            if masque.ndim != 2 or masque.dtype not in [np.uint8, np.bool_]:
+                raise ValueError("Le masque doit être un tableau 2D binaire (0 ou 1).")
+            
+            # Appliquer le masque
+            masked_image = self.img.copy()
+            for c in range(3):  # Appliquer à chaque canal
+                masked_image[:, :, c] *= (1 - masque)
+
+            self.img = masked_image
+            self.masque = masque
+
+        # Appliquer le masque sur l'image en niveaux de gris
         self.img_gray[self.masque == 1] = np.nan
-        self.zone = self.zone*(1-self.masque)
+
+        # Mettre à jour la zone d'intérêt
+        self.zone = self.zone * (1 - self.masque)
+
+        # Calcul des contours pour la zone de recherche
         outlines = self.outlines_target()
-        self.zone[outlines[:,0],outlines[:,1]] = 1
+        self.zone[outlines[:, 0], outlines[:, 1]] = 1
+
+        # Génération des patchs aplatis
         self.patch_flat = self.set_patch_flat()
-        a,b = self.search_zone_coord
-        print(f"Size of the search zone : {(b[1]-b[0])}x{(a[1]-a[0])}")
+
+        # Afficher la taille de la zone de recherche
+        a, b = self.search_zone_coord
+        print(f"Size of the search zone : {(b[1] - b[0])}x{(a[1] - a[0])}")
+
+        # Construction de l'arbre BallTree
         print("==Tree construction==")
         t1 = time()
-        self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
+        self.tree = BallTree(
+            self.patch_flat,
+            leaf_size=leaf_size,
+            metric=self.masked_distance
+        )
         t2 = time()
-        print(f"{t2-t1:.3f} sec")
+        print(f"{t2 - t1:.3f} sec")
 
     def get_patch(self,coord):
         a,b,c,d = self.patch_boundaries(coord)
