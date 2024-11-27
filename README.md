@@ -7,14 +7,14 @@ Le programme principal est accessible via le fichier main.py. Voici la syntaxe g
 python3 main.py <path_image> <patch_size> <options>
 ```
 ### Arguments :
-#### - Obligatoires
-```<path_image>``` : Chemin vers l'image à traiter.
-```<patch_size>``` : Taille des patchs utilisée pour le traitement (entier).
+#### Obligatoires
+- ```<path_image>``` : Chemin vers l'image à traiter.
+- ```<patch_size>``` : Taille des patchs utilisée pour le traitement (entier).
 
-#### - Optionnels
-```--mode``` : Mode de recherche utilisé. Peut être : Local (par défaut) ou Full.
-```--dsf``` : Facteur de sous-échantillonnage (entier).
-```--mask``` : Chemin vers un fichier .npy contenant un masque à utiliser.
+#### Optionnels
+- ```--mode``` : Mode de recherche utilisé. Peut être : Local (par défaut) ou Full.
+- ```--dsf``` : Facteur de sous-échantillonnage (entier).
+- ```--mask``` : Chemin vers un fichier .npy contenant un masque à utiliser.
 
 
 ### Exemple
