@@ -29,6 +29,9 @@ def update_brush_size(val):
     brush_size = val
 
 def draw_on_image(image_path, save_mask_path=None):
+    print("Press q to continue")
+    print("Press s to save the mask as a numpy file")
+    print("Press p to save the mask as an image")
     global brush_size
 
     # Charger l'image

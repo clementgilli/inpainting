@@ -1,17 +1,16 @@
-from utilities import *
-from draw import *
+from .utilities import *
+from .draw import *
 
-class PatchedImage():
-    def __init__(self, filename, size, search_mode="Full"): 
+class PatchedImageColor():
+    def __init__(self, filename, size, search_mode="Full"):
         self.filename = filename
         self.search_mode = search_mode #Full or Local
-        
+
         self.img = plt.imread(filename).copy().astype(np.float64)
-        self.img2 = plt.imread(filename).copy().astype(np.float64)
-        
-        if len(self.img.shape) == 3:
-            self.img = rgb2gray(self.img)
-            self.img2 = rgb2gray(self.img2)
+        self.img_gray = rgb2gray(self.img)
+
+        if len(self.img.shape) != 3:
+            raise ValueError("Not a colored image")
 
         self.height = self.img.shape[0]
         self.width = self.img.shape[1]
@@ -20,24 +19,25 @@ class PatchedImage():
         self.patch_flat = None
         self.tree = None #leaf_size à changer ? en fonction de la taille de l'image
         self.current_mask = None
+        shape2d = (self.height, self.width)
+        self.zone = np.ones(shape2d)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
+        self.working_patch = (-1,-1)
+        self.masque3d = None
+        self.masque = None
         self.search_zone_coord = None
         self.patch_coords = None
         self.save_coords = {}
 
-        self.zone = np.ones(self.img.shape)*2 # Tout le patch doit etre dans la zone ?  #0 = target region, 1 = frontière, 2 = source region
-        self.working_patch = (-1,-1)
-        self.masque = None
-
-        self.confidence = np.ones(self.img.shape)
-        self.data = np.zeros(self.img.shape)
-        self.priority = np.zeros(self.img.shape)
+        self.confidence = np.ones(shape2d)
+        self.data = np.zeros(shape2d)
+        self.priority = np.zeros(shape2d)
 
         self.gradient = np.full((2, self.height, self.width), np.nan)
     
     def periodic_boundary(self, start_row, end_row, start_col, end_col):
         row_indices = np.arange(start_row, end_row) % self.height
         col_indices = np.arange(start_col, end_col) % self.width
-        return self.img2[np.ix_(row_indices, col_indices)]
+        return self.img_gray[np.ix_(row_indices, col_indices)]
 
     def patch_boundaries(self,coord):
         k,l = coord
@@ -45,12 +45,12 @@ class PatchedImage():
     
     def search_zone(self,size_search):
         return search_zone_compiled(self.height,self.width,self.size,self.masque,size_search)
-    
+                                    
     def set_patch_flat(self):
         tab = []
         coords = []
         if self.search_mode == "Local":
-            a,b = self.search_zone(int(5*np.sqrt(min(self.width,self.height)))) #totally arbitrary
+            a,b = self.search_zone(int(5*(min(self.width,self.height))**0.4)) #totally arbitrary
         else:
             a,b = (self.size,self.height-self.size),(self.size,self.width-self.size)
         self.search_zone_coord = (a,b)
@@ -71,23 +71,58 @@ class PatchedImage():
 
     def set_masque(self,leaf_size,draw=True,masque=None): #1 pour le masque, 0 pour le reste
         #self.img = self.img*(1-masque)
+        if self.img.dtype == np.float32 or self.img.dtype == np.float64:
+            self.img = (self.img * 255).astype(np.uint8)  # Reconvertir en uint8
+        if self.img.shape[-1] == 3:  # Si c'est une image RGB
+            self.img = self.img[:, :, ::-1]  # Convertir de RGB à BGR
+
         if draw:
-            self.img, self.masque = draw_on_image(self.filename,"saves/mask.npy")
+            self.img, self.masque = draw_on_image(self.filename, "saves/mask.npy")
         else:
-            self.img = self.img*(1-masque)
+            if masque is None:
+                raise ValueError("Aucun masque fourni alors que draw=False.")
+            
+            # Vérifier les dimensions et le type
+            if masque.shape[:2] != self.img.shape[:2]:
+                raise ValueError("Les dimensions du masque et de l'image ne correspondent pas.")
+            if masque.ndim != 2 or masque.dtype not in [np.uint8, np.bool_]:
+                raise ValueError("Le masque doit être un tableau 2D binaire (0 ou 1).")
+            
+            # Appliquer le masque
+            masked_image = self.img.copy()
+            for c in range(3):  # Appliquer à chaque canal
+                masked_image[:, :, c] *= (1 - masque)
+
+            self.img = masked_image
             self.masque = masque
-        self.img2[self.masque == 1] = np.nan
-        self.zone = self.zone*(1-self.masque)
+
+        # Appliquer le masque sur l'image en niveaux de gris
+        self.img_gray[self.masque == 1] = np.nan
+
+        # Mettre à jour la zone d'intérêt
+        self.zone = self.zone * (1 - self.masque)
+
+        # Calcul des contours pour la zone de recherche
         outlines = self.outlines_target()
-        self.zone[outlines[:,0],outlines[:,1]] = 1
+        self.zone[outlines[:, 0], outlines[:, 1]] = 1
+
+        # Génération des patchs aplatis
         self.patch_flat = self.set_patch_flat()
-        a,b = self.search_zone_coord
-        print(f"Size of the search zone : {(b[1]-b[0])}x{(a[1]-a[0])}")
+
+        # Afficher la taille de la zone de recherche
+        a, b = self.search_zone_coord
+        print(f"Size of the search zone : {(b[1] - b[0])}x{(a[1] - a[0])}")
+
+        # Construction de l'arbre BallTree
         print("==Tree construction==")
         t1 = time()
-        self.tree = BallTree(self.patch_flat, leaf_size=leaf_size,metric=self.masked_distance) # de taille image avec 1 pour le masque, 0 pour le reste
+        self.tree = BallTree(
+            self.patch_flat,
+            leaf_size=leaf_size,
+            metric=self.masked_distance
+        )
         t2 = time()
-        print(f"{t2-t1:.3f} sec")
+        print(f"{t2 - t1:.3f} sec")
 
     def get_patch(self,coord):
         a,b,c,d = self.patch_boundaries(coord)
@@ -101,7 +136,8 @@ class PatchedImage():
         #            self.img[i, j] = patch[i - a, j - c]
         i,j = coord
         self.img[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
-        self.img2[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = patch
+        self.img_gray[i-self.size:i+self.size+1,j-self.size:j+self.size+1] = rgb2gray(patch)
+        #self.working_patch = (i,j)
     
     def set_priorities(self): #tres tres long pour le moment (a optimiser)
         if self.working_patch == (-1, -1):
@@ -112,7 +148,7 @@ class PatchedImage():
                         conf = self.set_confidence_patch((i,j))
                         dat = self.set_data_patch((i,j))
                         self.priority[i,j] = conf*dat
-                        #sigma = 0.5
+                        #sigma = 0.01
                         #self.priority[i,j] = conf*np.exp(dat/(2*sigma**2))
         else:
             k,l = self.working_patch
@@ -174,12 +210,15 @@ class PatchedImage():
             grad_ij = (self.gradient[0][k,l],self.gradient[1][k,l])
             normal_ij = self.compute_normal((k,l))
             self.data[k,l] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
-        #for i in range(a,b):
-        #    for j in range(c,d):
-        #        if self.zone[i,j] != 0:
+
+
+        #for i in range(a-1,b+1):
+        #    for j in range(c-1,d+1):
+        #        if self.zone[i,j] == 1:
         #            grad_ij = (self.gradient[0][i,j],self.gradient[1][i,j])
-        #            normal_ij = self.compute_normal(coord)
+        #            normal_ij = self.compute_normal((i,j))
         #            self.data[i,j] = np.dot(orthogonal_vector(grad_ij),normal_ij)/255
+
         return self.data[k,l]
     
     def masked_distance(self, patch1, patch2):
@@ -198,15 +237,10 @@ class PatchedImage():
         masque = (patch != 0).flatten()
         self.current_mask = masque
         ind = self.tree.query([patch.flatten()], k=2,return_distance=False, dualtree=True) #dual tree pour les images plus grandes
-        #X = np.concatenate((patchs[ind[0,1]].transpose(),patchs[ind[0,0]].transpose()))
-        #Pp = patch*np.ones((p_size,1))
-        #mat_Pp = np.concatenate((Pp,Pp))
-        #gram_matrix = (mat_Pp - X).T @ (mat_Pp - X)
-        #print(gram_matrix)
         nearest_index = ind[0,1]
         y_in_image, x_in_image = self.patch_coords[nearest_index]
         self.save_coords[coord] = (y_in_image, x_in_image)
-        return (patchs[nearest_index][:(p_size**2)]* (1-masque)).reshape((p_size,p_size))
+        return (patchs[nearest_index][:(3*p_size**2)]* (1-masque)).reshape((p_size,p_size,3))
     
     def reconstruction(self,coord): #un patch
         pato = self.find_nearest_patch(coord)
@@ -233,7 +267,8 @@ class PatchedImage():
         plt.show()
 
     def show_img(self,search_zone=False):
-        plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
+        print(self.img.shape)
+        plt.imshow(cv2.cvtColor(self.img.astype(np.uint8), cv2.COLOR_BGR2RGB))
         if search_zone:
             c1,c2 = self.search_zone_coord
             plt.plot([c2[0],c2[0],c2[1],c2[1],c2[0]],[c1[0],c1[1],c1[1],c1[0],c1[0]],color=(0,1,0))
@@ -247,7 +282,7 @@ class PatchedImage():
         plt.imshow(self.img, cmap='gray',vmin=0,vmax=255)
         plt.plot([l-self.size,l+self.size,l+self.size,l-self.size,l-self.size],[k-self.size,k-self.size,k+self.size,k+self.size,k-self.size],color=(0,1,0))
 
-    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False, save_path = "default/default.png", save_gif=False, show_result=True):
+    def reconstruction_auto(self, iter_max = np.inf, display_img = False, display_iter = False, save_result=False ,save_gif=False, show_result=False):
         i = 0
         t1 = time()
         while len(self.zone[self.zone==0]) != 0 and i < iter_max:
@@ -270,8 +305,7 @@ class PatchedImage():
         t2 = time()
         print(f"Reconstruct in {t2-t1:.3f} sec")
         if save_result:
-            print("Saving result", save_path)
-            cv2.imwrite(save_path, self.img)
+            cv2.imwrite(f"results/res.jpg", self.img)
         if save_gif:
             images = []
             filenames = sorted((int(fn.split(".")[0]) for fn in os.listdir('./gifs/') if fn.endswith('.jpg')))
@@ -289,10 +323,13 @@ class PatchedImage():
             raise ValueError("No coordinates saved")
         for coord in coords:
             k,l = coords[coord]
-            pat = self.get_patch(coords[coord]) * (1-self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1])
+            #pat = self.get_patch(coords[coord]) * (1-self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1])
+
+            pat = self.get_patch(coords[coord])
+            masque_2d = (1 - self.masque[k - self.size:k + self.size + 1, l - self.size:l + self.size + 1])
+            masque_3d = masque_2d[:, :, np.newaxis]
+            pat = pat * masque_3d
+
             self.set_patch(coord,pat)
 
-            #self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0
-            #self.zone[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 2
-
-            
+            self.masque[k-self.size:k+self.size+1,l-self.size:l+self.size+1] = 0

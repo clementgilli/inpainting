@@ -1,5 +1,5 @@
-from utilities import *
-from draw import *
+from .utilities import *
+from .draw import *
 from copy import deepcopy 
 
 def masked_dist(patch1, patch2, mask):
