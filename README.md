@@ -1,6 +1,6 @@
 # Object Removal by Exemplar-Based Inpainting
 
-## Utilisation
+## Utilisation
 Le programme principal est accessible via le fichier main.py. Voici la syntaxe générale :
 
 ```bash
